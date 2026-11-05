@@ -1,0 +1,2 @@
+# Only needed on the submitting PC for HF mode. PyTorch runs in the remote Job.
+huggingface_hub==0.36.2

@@ -1,0 +1,4 @@
+# Install a PyTorch build for your platform before this file if necessary.
+torch>=2.6,<3
+transformers==4.55.4
+safetensors>=0.4.3,<1

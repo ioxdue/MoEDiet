@@ -1,0 +1,10 @@
+{
+  "mode": "local",
+  "model": "allenai/OLMoE-1B-7B-0125-Instruct",
+  "tags": ["python", "c++", "devops"],
+  "out": "runs/dev-q4",
+  "quantization": "Q4_K_M",
+  "llama_dir": null,
+  "bin_dir": null,
+  "build": {}
+}

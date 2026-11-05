@@ -1,0 +1,10 @@
+{
+  "mode": "hf",
+  "model": "allenai/OLMoE-1B-7B-0125-Instruct",
+  "tags": ["python", "c++", "devops"],
+  "output_repo": null,
+  "flavor": "l4x1",
+  "timeout": "90m",
+  "quantization": "Q4_K_M",
+  "build": {"device": "cuda", "dtype": "bfloat16"}
+}

@@ -1,0 +1,42 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# MoEDiet runs, downloads, and generated models
+runs/
+download/
+test-tokenizer/
+*.gguf
+*.safetensors
+*.bin
+
+# llama.cpp build artifacts & temporary files
+.tools-*/
+.convert-*/
+.moediet-*/
+build/
+dist/
+*.egg-info/
+
+# Hugging Face & local cache
+.cache/
+
+# IDE & editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS metadata
+.DS_Store
+Thumbs.db
+Desktop.ini

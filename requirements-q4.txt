@@ -1,0 +1,6 @@
+-r requirements.txt
+# Imports used by the pinned upstream GGUF converter.
+mistral-common==1.8.5
+sentencepiece>=0.2,<0.3
+protobuf>=4.25,<8
+PyYAML>=6,<7
