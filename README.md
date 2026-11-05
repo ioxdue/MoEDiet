@@ -14,6 +14,11 @@ e router F32. I tipi degli esperti verificati sono Q5_0, IQ3_XXS, IQ4_XS, IQ4_NL
 Q2_0 e IQ2_S; layout fusi e routing a gruppi sono rifiutati. Metadati array vuoti
 o annidati e GGUF big-endian sono esclusi da questo primo incremento.
 
+La CLI supporta anche `inspect-hub` e `compact-hub` per GGUF pubblici su una
+revisione Hub fissata. Usa HTTP Range, `If-Match` e un parser header-only con un
+limite massimo di directory remota; non effettua fallback al download completo.
+La compattazione remota trasferisce comunque tutti i byte dei tensori mantenuti.
+
 ### Ambiente e ispezione
 
 Il workspace locale dispone dell'ambiente `.venv-gguf` già preparato. Per ricrearlo
@@ -65,6 +70,42 @@ Una traccia esterna può dichiarare `routing_trace` con `trace_sha256`, ma quest
 comando non ne verifica la qualità né la correttezza della profilazione.
 Il template identità non sceglie gli esperti utili alla programmazione.
 Le vecchie maschere HF/OLMoE non sono manifesti GGUF compatibili.
+
+### Sorgente pubblica Hugging Face Hub
+
+Per inventariare un GGUF pubblico senza scaricare i payload, fissare un commit
+completo e indicare la directory che contiene un singolo GGUF o tutti gli shard:
+
+```powershell
+$repo = "owner/repo"
+$revision = "<commit SHA completo>"
+$path = "path/to/gguf"
+.\.venv-gguf\Scripts\python.exe .\gguf_prune.py inspect-hub --repo-id $repo --revision $revision --path $path --identity-selection .\selection.qwen38.json
+```
+
+Il manifesto remoto identifica ogni file con percorso, dimensione, OID API e
+ETag; non contiene né dichiara verificato uno SHA-256 integrale sorgente.
+Letture remote e copie usano HTTP Range, `If-Match` e controlli rigidi di
+risposta. Il parser header-only segue GGUF v3 little-endian e i tipi/dimensioni
+della revisione `gguf-py` fissata sopra: decodifica KV e tensor directory con
+range incrementali esatti, senza prefetch oltre i campi e senza leggere payload.
+Per shard il budget predefinito è 64 MiB di byte header effettivamente richiesti
+e 1.000.000 di elementi complessivi (KV, tensori ed elementi array), con un
+massimo fisso di 20.000 richieste Range header; i budget byte/elementi si
+possono abbassare con `--max-header-bytes` e `--max-directory-items`.
+Conteggi/lunghezze oltre budget, array vuoti/annidati, versioni non v3,
+big-endian e directory malformate vengono rifiutati senza fallback a download
+completo. La compattazione legge comunque tutti i byte dei tensori mantenuti:
+una selezione identità trasferisce quindi il contenuto sostanziale del modello.
+
+```powershell
+.\.venv-gguf\Scripts\python.exe .\gguf_prune.py compact-hub --repo-id $repo --revision $revision --path $path --selection .\selection.qwen38.json --out .\runs\qwen38-gguf
+```
+
+`compact-hub` crea e verifica localmente gli shard ridotti; non pubblica né
+ricarica output. Il report distingue l'identità della revisione/file Hub dalla
+verifica hash integrale sorgente (`source_hashes_verified=false`); hash dei
+payload trasferiti e dei file finali sono verificati localmente.
 
 ```powershell
 .\.venv-gguf\Scripts\python.exe .\gguf_prune.py compact --model $modelGguf --selection .\selection.qwen38.json --out .\runs\qwen38-gguf

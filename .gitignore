@@ -47,3 +47,7 @@ dist/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# .clairvoyance agent
+.clairvoyance/
+library.md
