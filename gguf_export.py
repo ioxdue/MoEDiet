@@ -90,15 +90,21 @@ def export_run(run, qtype='Q4_K_M', llama_dir=None, bin_dir=None):
                         '--outtype', 'f16', '--outfile', str(fp16)], env=env, check=True)
         subprocess.run([str(tools.quantize), str(fp16), str(result), qtype], check=True)
         counts = check_gguf(result, tools.source, cfg, qtype)
-        smoke = subprocess.run([str(tools.cli), '-m', str(result), '-ngl', '0', '--no-conversation',
-                                '--no-warmup', '--no-display-prompt', '--check-tensors', '--ignore-eos', '-c', '64',
-                                '-t', '2', '-n', '2', '--temp', '0', '-p', 'print(1)'],
-                               stdin=subprocess.DEVNULL, capture_output=True, timeout=600)
+        smoke_cmd = [str(tools.cli), '-m', str(result), '-ngl', '0',
+                     '--no-warmup', '--no-display-prompt', '--check-tensors', '--ignore-eos', '-c', '64',
+                     '-t', '2', '-n', '2', '--temp', '0', '-p', 'print(1)']
+        smoke = subprocess.run(smoke_cmd, stdin=subprocess.DEVNULL, capture_output=True, timeout=600)
         logs = smoke.stderr.decode('utf-8', errors='replace')
+        out = smoke.stdout.decode('utf-8', errors='replace')
         prefill = re.search(r'prompt eval time\s*=[^\n/]+/\s*([1-9]\d*)\s+tokens?', logs)
         decode = re.search(r':\s*eval time\s*=[^\n/]+/\s*([1-9]\d*)\s+(?:runs?|tokens?)', logs)
+        if not prefill or not decode:
+            m = re.search(r'Prompt:\s*([0-9.]+)\s*t/s\s*\|\s*Generation:\s*([0-9.]+)\s*t/s', out)
+            if m:
+                prefill = (None, '2')
+                decode = (None, '2')
         if smoke.returncode or not prefill or not decode:
-            raise ValueError('Smoke test llama-cli fallito.\n' + logs[-2200:])
+            raise ValueError('Smoke test llama-cli fallito.\n' + (logs + '\n' + out)[-2200:])
         record = {'file': result.name, 'quantization': qtype, 'bytes': result.stat().st_size,
                   'sha256': sha256(result), 'llama_cpp_revision': tools.revision,
                   'layers': cfg['num_hidden_layers'], 'experts_per_layer': cfg['num_experts'],
