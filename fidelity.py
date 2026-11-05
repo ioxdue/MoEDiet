@@ -67,3 +67,18 @@ def compare(traces, candidate, reference=None):
 
 def passes(metrics, limit):
     return bool(metrics) and all(m['kl_nats_per_token'] <= limit for m in metrics.values())
+
+
+def equivalent(reference, candidate, atol, rtol):
+    """Independent numerical gate: matching KL to the teacher is not sufficient."""
+    passed = bool(reference) and len(reference) == len(candidate)
+    peak = 0.0
+    if passed:
+        for base, new in zip(reference, candidate, strict=True):
+            if base.shape != new.shape or not torch.isfinite(base).all() or not torch.isfinite(new).all():
+                passed = False
+                peak = None
+                break
+            peak = max(peak, (base - new).abs().max().item())
+            passed = bool(torch.allclose(base, new, atol=atol, rtol=rtol)) and passed
+    return {'passed': passed, 'max_abs_logp_delta': peak, 'atol': atol, 'rtol': rtol}

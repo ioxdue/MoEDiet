@@ -57,6 +57,7 @@ class TestMoEDiet(unittest.TestCase):
         model, tok = self.load()
         corpus = {'python': ['short', 'two samples with different lengths'], 'sql': ['aggregate'], CONTROL: ['history']}
         for renorm in (False, True):
+            model.config.norm_topk_prob = renorm
             for layer in model.model.layers:
                 layer.mlp.norm_topk_prob = renorm
             actual, counts = profile(model, tok, corpus, ['python', 'sql'], 0.5)

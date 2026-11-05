@@ -19,6 +19,7 @@ test_tokenizer/
 *.gguf
 *.safetensors
 *.bin
+*.zip
 
 # llama.cpp build artifacts & temporary files
 .tools-*/

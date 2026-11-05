@@ -1,0 +1,28 @@
+{
+  "mode": "hf",
+  "model": "allenai/OLMoE-1B-7B-0125-Instruct",
+  "tags": [
+    "python",
+    "c++",
+    "devops"
+  ],
+  "output_repo": "operator/moediet-runs",
+  "flavor": "l4x1",
+  "timeout": "90m",
+  "quantization": "Q4_K_M",
+  "corpus": "corpora/dev-expanded-v1.json",
+  "build": {
+    "budgets": [
+      48,
+      56,
+      60,
+      62
+    ],
+    "lambda": 0.5,
+    "max_kl": 0.1,
+    "eval_tokens": 32,
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "revision": "b89a7c4bc24fb9e55ce2543c9458ce0ca5c4650e"
+  }
+}

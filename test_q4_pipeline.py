@@ -44,15 +44,21 @@ class TestExecutionModes(unittest.TestCase):
         (self.root / 'custom.json').write_text('{"sample": true}')
         api = Mock()
         api.model_info.side_effect = [SimpleNamespace(sha='a' * 40), SimpleNamespace(private=True)]
+        metadata = self.root / 'metadata.json'
+        metadata.write_text(json.dumps({'model_type': 'olmoe', 'num_hidden_layers': 2,
+                'num_experts': 6, 'num_experts_per_tok': 2, 'norm_topk_prob': False, 'max_position_embeddings': 512}))
         def store_code(**kw):
             stage = Path(kw['folder_path'])
-            self.assertEqual({p.name for p in stage.iterdir()}, {*hf_jobs.SOURCES, 'corpus.json', 'request.json'})
+            self.assertEqual({p.relative_to(stage).as_posix() for p in stage.rglob('*') if p.is_file()},
+                             {*hf_jobs.SOURCES, 'corpus.json', 'request.json'})
             payload = json.loads((stage / 'request.json').read_text())
             self.assertEqual((payload['build']['revision'], payload['corpus']), ('a' * 40, 'corpus.json'))
             self.assertNotIn('canary-token', (stage / 'request.json').read_text())
+            self.assertEqual(payload['architecture']['model_type'], 'olmoe')
             return SimpleNamespace(oid='b' * 40)
         api.upload_folder.side_effect = store_code
-        with patch('hf_jobs.HfApi', return_value=api), patch('hf_jobs.get_token', return_value='canary-token'):
+        with patch('hf_jobs.HfApi', return_value=api), patch('hf_jobs.get_token', return_value='canary-token'), patch(
+                'hf_jobs.hf_hub_download', return_value=str(metadata)):
             hf_jobs.submit(cfg)
         spec = api.run_job.call_args.kwargs
         self.assertEqual(spec['env']['MOEDIET_COMMIT'], 'b' * 40)
@@ -61,7 +67,8 @@ class TestExecutionModes(unittest.TestCase):
         compile(spec['command'][2], '<hf-bootstrap>', 'exec')
         api.reset_mock()
         api.model_info.side_effect = [SimpleNamespace(sha='a' * 40), SimpleNamespace(private=False)]
-        with patch('hf_jobs.HfApi', return_value=api), patch('hf_jobs.get_token', return_value='canary-token'):
+        with patch('hf_jobs.HfApi', return_value=api), patch('hf_jobs.get_token', return_value='canary-token'), patch(
+                'hf_jobs.hf_hub_download', return_value=str(metadata)):
             with self.assertRaisesRegex(ValueError, 'pubblica'):
                 hf_jobs.submit(cfg)
         api.upload_folder.assert_not_called()

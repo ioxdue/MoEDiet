@@ -7,12 +7,16 @@ import shutil
 import tempfile
 from uuid import uuid4
 
-from huggingface_hub import HfApi, get_token
+from huggingface_hub import HfApi, get_token, hf_hub_download
+
+from architecture import BUILTINS
+from preflight import check_metadata
 
 HERE = Path(__file__).resolve().parent
 IMAGE = 'pytorch/pytorch:2.8.0-cuda12.8-cudnn9-devel@sha256:a7103283ea7113e10ae5d014bd2342acebda0bc53164b2f7b1dd6eb7a766bdb6'
 SOURCES = ('moediet.py', 'probes.py', 'routing.py', 'fidelity.py', 'gguf_export.py', 'llama_tools.py',
-           'run.py', 'hf_jobs.py', 'requirements.txt', 'requirements-q4.txt')
+           'run.py', 'hf_jobs.py', 'requirements.txt', 'requirements-q4.txt', 'architecture.py', 'adapters.py',
+           'preflight.py', *(f'architectures/{name}.json' for name in BUILTINS))
 # No model, token, local commands, or user-supplied values are interpolated into this program.
 BOOTSTRAP = '''
 import os, sys, subprocess, tempfile
@@ -42,6 +46,8 @@ def submit(cfg):
     source = api.model_info(cfg['model'], revision=cfg['build'].get('revision'))
     if not source.sha:
         raise ValueError('Commit del modello sorgente non disponibile.')
+    metadata = hf_hub_download(cfg['model'], 'config.json', revision=source.sha, token=token)
+    plan = check_metadata(cfg, json.loads(Path(metadata).read_text(encoding='utf-8-sig')))
     api.create_repo(repo_id=repo, private=True, exist_ok=True)
     if api.model_info(repo).private is not True:
         raise ValueError('La destinazione esiste ed è pubblica. Scegliere un repository privato.')
@@ -49,8 +55,10 @@ def submit(cfg):
     with tempfile.TemporaryDirectory(prefix='moediet-job-') as tmp:
         stage = Path(tmp)
         for name in SOURCES:
+            (stage / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(HERE / name, stage / name)
         payload = {'model': cfg['model'], 'tags': cfg['tags'], 'quantization': cfg['quantization'],
+                   'architecture': plan['architecture'],
                    'build': {**cfg['build'], 'revision': source.sha}}
         if cfg.get('corpus'):
             shutil.copyfile(cfg['corpus'], stage / 'corpus.json')

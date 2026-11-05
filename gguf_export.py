@@ -11,12 +11,14 @@ import sys
 import tempfile
 
 from llama_tools import get_tools, sha256
+from architecture import check_export, resolve_profile
 
 QTYPES = ('Q4_K_M', 'Q4_0')
 
 
 def model_config(run, report):
     cfg = json.loads((run / 'checkpoint' / 'config.json').read_text(encoding='utf-8'))
+    check_export(resolve_profile(cfg), True)
     native = report['routing']
     if (not report.get('checkpoint') or not report.get('checkpoint_audit', {}).get('passed')
             or cfg.get('model_type') != 'olmoe' or cfg['num_experts'] != report['retained_per_layer']

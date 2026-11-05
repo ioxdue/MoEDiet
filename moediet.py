@@ -1,4 +1,4 @@
-"""MoEDiet MVP: build an OLMoE expert mask and a standard compact HF checkpoint."""
+"""MoEDiet: profile-driven MoE pruning with held-out audits and checkpoint verification."""
 
 import argparse
 import gc
@@ -14,14 +14,17 @@ from pathlib import Path
 
 import torch
 import transformers
-from transformers import AutoConfig, AutoTokenizer, OlmoeForCausalLM
+from transformers import AutoConfig, AutoTokenizer, AutoModelForCausalLM
 
-from fidelity import compare, make_traces, passes, replay
+from adapters import adapter_for, tolerances
+from architecture import budgets_for, profile_hash, resolve_profile, validate_checkpoint_config
+from fidelity import compare, equivalent, make_traces, passes, replay
 from probes import clean_tags, make_probes
 from routing import blocks, compact_in_place, continuation, encode, masked, profile, select_experts, validate_rows
 
 DEFAULT_MODEL = 'allenai/OLMoE-1B-7B-0125-Instruct'
-FORMAT = 'moediet.olmoe.mask.v1'
+FORMAT = 'moediet.mask.v2'
+LEGACY_FORMAT = 'moediet.olmoe.mask.v1'
 
 
 def write_json(path, data):
@@ -45,36 +48,38 @@ def local_signature(path):
     return hashes.hexdigest()
 
 
-def resolve_source(name, revision, fingerprint):
-    if transformers.__version__ != '4.55.4':
-        raise ValueError('Questo adattatore richiede transformers==4.55.4 (layout del router verificato).')
+def resolve_source(name, revision, fingerprint, architecture_profile=None, quantization=None):
     name = os.path.expandvars(str(name))
     path = Path(name).expanduser()
     local = path.is_dir()
     if local and revision:
         raise ValueError('--revision si applica solo a un modello sullo Hub.')
     name = str(path.resolve()) if local else name
-    cfg = AutoConfig.from_pretrained(name, revision=revision, trust_remote_code=False)
-    if cfg.model_type != 'olmoe' or getattr(cfg, 'quantization_config', None):
-        raise ValueError('Il MVP richiede pesi OLMoE non quantizzati in formato HF/safetensors.')
+    from preflight import read_model_config
+    raw, commit = read_model_config(name, revision)
+    spec, _ = validate_checkpoint_config(raw, architecture_profile, quantization)
+    cfg = AutoConfig.from_pretrained(name, revision=commit, trust_remote_code=False)
+    cfg.moediet_architecture = spec
+    adapter_for(cfg).check_runtime()
     source = {'kind': 'local' if local else 'hub', 'id': name}
     if local and fingerprint:
         source['sha256'] = local_signature(path)
     if not local:
-        source['revision'] = getattr(cfg, '_commit_hash', None)
+        source['revision'] = commit
         if not source['revision']:
             raise ValueError('Impossibile determinare il commit del checkpoint sullo Hub.')
     return cfg, source
 
 
-def load_model(source, device, dtype):
+def load_model(source, device, dtype, architecture_profile=None):
     tp = 'auto' if dtype == 'auto' else getattr(torch, dtype)
-    model, info = OlmoeForCausalLM.from_pretrained(
+    model, info = AutoModelForCausalLM.from_pretrained(
         source['id'], revision=source.get('revision'), torch_dtype=tp, use_safetensors=True,
-        attn_implementation='eager', output_loading_info=True,
+        attn_implementation='eager', output_loading_info=True, trust_remote_code=False,
     )
     if any(info.get(key) for key in ('missing_keys', 'unexpected_keys', 'mismatched_keys', 'error_msgs')):
         raise ValueError(f'Pesi incompatibili con il modello: {info}')
+    model.config.moediet_architecture = resolve_profile(model.config, architecture_profile)
     model.to(device).eval()
     blocks(model)
     return model
@@ -84,23 +89,8 @@ def load_tokenizer(source):
     return AutoTokenizer.from_pretrained(source['id'], revision=source.get('revision'), trust_remote_code=False)
 
 
-def budgets_for(total, top_k, requested):
-    if not 1 <= top_k <= total:
-        raise ValueError('Numero di esperti o top-k del modello non valido.')
-    if requested is None:
-        requested = []
-        value = top_k
-        while value < total:
-            requested.append(value)
-            value *= 2
-    if any(not top_k <= x <= total for x in requested):
-        raise ValueError(f'Ogni budget deve essere fra {top_k} (routing nativo) e {total}.')
-    return sorted(set(requested) | {total})
-
-
 def topology(cfg):
-    return {'num_layers': cfg.num_hidden_layers, 'experts_per_layer': cfg.num_experts,
-            'experts_per_token': cfg.num_experts_per_tok, 'norm_topk_prob': cfg.norm_topk_prob}
+    return adapter_for(cfg).topology(cfg)
 
 
 def size_of(model):
@@ -109,7 +99,16 @@ def size_of(model):
 
 
 def verify_manifest(meta, model, source):
-    if meta.get('format') != FORMAT or meta.get('source') != source or meta.get('routing') != topology(model.config):
+    native = topology(model.config)
+    if meta.get('format') == LEGACY_FORMAT and model.config.model_type == 'olmoe':
+        native = {key: value for key, value in native.items() if key != 'layer_indices'}
+    elif meta.get('format') == FORMAT:
+        spec = adapter_for(model).spec
+        if meta.get('architecture') != spec or meta.get('architecture_sha256') != profile_hash(spec):
+            raise ValueError('La maschera usa un profilo architettura differente o alterato.')
+    else:
+        raise ValueError('Formato maschera non riconosciuto.')
+    if meta.get('source') != source or meta.get('routing') != native:
         raise ValueError('La maschera non corrisponde alla sorgente, alla revisione o al routing del modello.')
     rows = meta.get('expert_mask')
     validate_rows(model, rows)
@@ -125,17 +124,30 @@ def build(args, work, device):
         raise ValueError('--eval-tokens deve essere positivo.')
     tags = clean_tags(args.tags)
     corpus = make_probes(tags, args.corpus)
-    cfg, source = resolve_source(args.model, args.revision, fingerprint=True)
-    total = cfg.num_experts
-    budgets = budgets_for(total, cfg.num_experts_per_tok, args.budgets)
+    cfg, source = resolve_source(args.model, args.revision, fingerprint=True,
+                                 architecture_profile=args.architecture_profile, quantization=args.gguf)
+    adapter = adapter_for(cfg)
+    native = adapter.topology(cfg)
+    total = native['experts_per_layer']
+    budgets = budgets_for(total, native['experts_per_token'], args.budgets, args.keep_fractions)
     tok = load_tokenizer(source)
-    model = load_model(source, device, args.dtype or 'auto')
-    native = topology(model.config)
+    model = load_model(source, device, args.dtype or 'auto', adapter.spec)
     dtype = str(model.get_input_embeddings().weight.dtype).split('.')[-1]
+    probe = encode(model, tok, corpus['profile'][tags[0]][0])[:, :8]
+    contract = adapter.verify_contract(model, probe)
+    full_rows = [list(range(total)) for _ in range(native['num_layers'])]
+    original_logits = model(input_ids=probe, use_cache=False).logits
+    with masked(model, full_rows):
+        identity_logits = model(input_ids=probe, use_cache=False).logits
+    if not torch.equal(original_logits, identity_logits):
+        raise ValueError('La maschera identita modifica il modello originale.')
     print('Profilazione dei router...', flush=True)
     score, tokens = profile(model, tok, corpus['profile'], tags, args.penalty)
     full_size = size_of(model)
     report = {'source': source, 'routing': native, 'dtype': dtype, 'device': str(device),
+              'architecture': adapter.spec, 'architecture_sha256': profile_hash(adapter.spec),
+              'adapter_contract': contract, 'identity_mask_passed': True,
+              'requested_keep_fractions': args.keep_fractions,
               'torch': str(torch.__version__), 'transformers': transformers.__version__, 'probes': corpus,
               'profile_tokens_per_layer_by_group': tokens, 'score_by_layer': score.tolist(),
               'lambda': args.penalty, 'budgets': budgets, 'max_kl_nats_per_token': args.max_kl,
@@ -172,6 +184,7 @@ def build(args, work, device):
             status, keep = 'unchanged_audit_failed', total
             rows = select_experts(score, total)
     manifest = {'format': FORMAT, 'source': source, 'routing': native, 'profile_dtype': dtype,
+                'architecture': adapter.spec, 'architecture_sha256': profile_hash(adapter.spec),
                 'target_tags': tags, 'retained_per_layer': keep, 'expert_mask': rows}
     verify_manifest(manifest, model, source)
     if status == 'pruned':
@@ -185,8 +198,10 @@ def build(args, work, device):
         compact = load_model({'id': str(path)}, device, dtype)
         compact_logp = replay(compact, audit)
         actual = compare(audit, compact_logp)
-        passed = passes(actual, args.max_kl)
+        equivalence = equivalent(masked_logp, compact_logp, **tolerances(getattr(torch, dtype)))
+        passed = passes(actual, args.max_kl) and equivalence['passed']
         report['checkpoint_audit'] = {'passed': passed, 'vs_original': actual,
+                                      'mask_equivalence': equivalence,
                                       'vs_mask': compare(audit, compact_logp, masked_logp)}
         if passed:
             report['checkpoint'] = {**size_of(compact), 'safetensors_bytes': sum(
@@ -196,6 +211,8 @@ def build(args, work, device):
         del compact
         gc.collect()
         if not passed:
+            if path.resolve().parent != work.resolve() or path.name != 'checkpoint':
+                raise ValueError('Percorso del checkpoint temporaneo fuori dalla directory della build.')
             shutil.rmtree(path)  # Only this run's unpublished temporary export.
     report.update(status=status, retained_per_layer=keep, expert_fraction_removed=1 - keep / total)
     write_json(work / 'mask.json', manifest)
@@ -212,18 +229,24 @@ def generate(args, device):
         if args.revision:
             raise ValueError('La revisione è già fissata nella maschera.')
         meta = json.loads(Path(args.mask).read_text(encoding='utf-8'))
-        if meta.get('format') != FORMAT:
+        if meta.get('format') not in (FORMAT, LEGACY_FORMAT):
             raise ValueError('Formato maschera non riconosciuto.')
         original = meta['source']
         if original['kind'] == 'local' and not Path(original['id']).is_dir():
             raise ValueError('La directory locale originale registrata nella maschera non è disponibile.')
-        _, source = resolve_source(original['id'], original.get('revision'), fingerprint=True)
+        requested = meta.get('architecture') if meta.get('format') == FORMAT else 'olmoe'
+        if args.architecture_profile is not None:
+            declared_type = requested['model_type'] if isinstance(requested, dict) else 'olmoe'
+            minimal_cfg = {'model_type': declared_type}
+            if resolve_profile(minimal_cfg, args.architecture_profile) != resolve_profile(minimal_cfg, requested):
+                raise ValueError('Il profilo richiesto differisce da quello della maschera.')
+        cfg, source = resolve_source(original['id'], original.get('revision'), fingerprint=True, architecture_profile=requested)
         if source != original:
             raise ValueError('Il checkpoint originale è cambiato dalla profilazione.')
     else:
-        _, source = resolve_source(args.model, args.revision, fingerprint=False)
+        cfg, source = resolve_source(args.model, args.revision, fingerprint=False, architecture_profile=args.architecture_profile)
     dtype = args.dtype or (meta['profile_dtype'] if meta else 'auto')
-    model, tok = load_model(source, device, dtype), load_tokenizer(source)
+    model, tok = load_model(source, device, dtype, cfg.moediet_architecture), load_tokenizer(source)
     ids = encode(model, tok, args.prompt, reserve=args.max_new_tokens)
     if meta:
         verify_manifest(meta, model, source)
@@ -238,10 +261,11 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     subs = parser.add_subparsers(dest='command', required=True)
     builder = subs.add_parser('build', help='Profilazione, selezione, audit ed export')
-    builder.add_argument('--model', default=DEFAULT_MODEL, help='ID Hub o directory OLMoE locale')
+    builder.add_argument('--model', default=DEFAULT_MODEL, help='ID Hub o directory HF locale')
     builder.add_argument('--tags', nargs='+', required=True)
     builder.add_argument('--out', type=Path, required=True, help='Nuova directory dei risultati')
     builder.add_argument('--budgets', nargs='+', type=int, help='Esperti conservati per strato, fallback intero automatico')
+    builder.add_argument('--keep-fractions', nargs='+', type=float, help='Frazioni conservate per layer MoE, arrotondate per eccesso')
     builder.add_argument('--lambda', dest='penalty', type=float, default=0.5)
     builder.add_argument('--max-kl', type=float, default=0.10, help='Soglia per ogni gruppo, in nat/token')
     builder.add_argument('--eval-tokens', type=int, default=8)
@@ -257,6 +281,7 @@ def main(argv=None):
     gen.add_argument('--prompt', required=True)
     gen.add_argument('--max-new-tokens', type=int, default=48)
     for sub in (builder, gen):
+        sub.add_argument('--architecture-profile', help='Profilo JSON oppure nome incorporato; default rilevamento automatico')
         sub.add_argument('--device', choices=['auto', 'cpu', 'cuda'], default='auto')
         sub.add_argument('--dtype', choices=['auto', 'float32', 'float16', 'bfloat16'])
         sub.add_argument('--revision', help='Commit o ref del modello sullo Hub')

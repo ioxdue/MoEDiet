@@ -1,0 +1,22 @@
+{
+  "schema_version": 2,
+  "mode": "hf",
+  "model": {
+    "id": "allenai/OLMoE-1B-7B-0125-Instruct",
+    "revision": "b89a7c4bc24fb9e55ce2543c9458ce0ca5c4650e"
+  },
+  "architecture_profile": "architectures/olmoe.json",
+  "tags": ["python", "c++", "devops"],
+  "corpus": "corpora/dev-expanded-v1.json",
+  "output_repo": "operator/moediet-runs",
+  "flavor": "l4x1",
+  "timeout": "90m",
+  "pruning": {
+    "keep_fractions": [0.75, 0.875, 0.9375, 0.96875],
+    "preserve_top_k": true,
+    "shared_experts": "preserve"
+  },
+  "validation": {"max_kl": 0.1, "eval_tokens": 32, "require_control": true},
+  "build": {"lambda": 0.0, "device": "cuda", "dtype": "bfloat16"},
+  "export": {"format": "gguf", "quantization": "Q4_K_M"}
+}

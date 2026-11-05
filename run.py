@@ -11,11 +11,66 @@ import sys
 
 from gguf_export import QTYPES, export_run
 from probes import clean_tags, make_probes
+from architecture import check_export, load_profile
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_MODEL = 'allenai/OLMoE-1B-7B-0125-Instruct'
 BUILD_FLAGS = {'budgets': '--budgets', 'lambda': '--lambda', 'max_kl': '--max-kl',
-               'eval_tokens': '--eval-tokens', 'dtype': '--dtype', 'device': '--device', 'revision': '--revision'}
+               'eval_tokens': '--eval-tokens', 'dtype': '--dtype', 'device': '--device', 'revision': '--revision',
+               'keep_fractions': '--keep-fractions'}
+
+
+def normalize_v2(raw):
+    """Translate the public v2 schema to one internal plan; reject ambiguous duplicates."""
+    raw = dict(raw)
+    version = raw.pop('schema_version', 1)
+    if type(version) is not int or version not in (1, 2):
+        raise ValueError('schema_version deve essere 1 o 2.')
+    if version == 1:
+        return raw
+    model = raw.get('model')
+    if not isinstance(model, dict) or 'id' not in model or set(model) - {'id', 'revision'}:
+        raise ValueError('model v2 richiede id e opzionalmente revision.')
+    raw['model'] = model['id']
+    build = raw.get('build', {})
+    if not isinstance(build, dict):
+        raise ValueError('build deve essere un oggetto.')
+    build = dict(build)
+
+    def put(key, value):
+        if key in build:
+            raise ValueError(f'Parametro duplicato: {key}.')
+        build[key] = value
+
+    if 'revision' in model:
+        put('revision', model['revision'])
+    pruning = raw.pop('pruning', {})
+    if not isinstance(pruning, dict) or set(pruning) - {'budgets', 'keep_fractions', 'preserve_top_k', 'shared_experts'}:
+        raise ValueError('Parametri pruning sconosciuti.')
+    if pruning.get('preserve_top_k', True) is not True or pruning.get('shared_experts', 'preserve') != 'preserve':
+        raise ValueError('Questa versione preserva top-k ed esperti condivisi.')
+    for key in ('budgets', 'keep_fractions'):
+        if key in pruning:
+            put(key, pruning[key])
+    validation = raw.pop('validation', {})
+    if not isinstance(validation, dict) or set(validation) - {'max_kl', 'eval_tokens', 'require_control'}:
+        raise ValueError('Parametri validation sconosciuti.')
+    if validation.get('require_control', True) is not True:
+        raise ValueError('Il controllo separato resta obbligatorio.')
+    for key in ('max_kl', 'eval_tokens'):
+        if key in validation:
+            put(key, validation[key])
+    export = raw.pop('export', {'format': 'hf'})
+    if (not isinstance(export, dict) or set(export) - {'format', 'quantization'}
+            or export.get('format') not in ('hf', 'gguf') or 'quantization' in raw):
+        raise ValueError('Export v2: scegliere format hf oppure gguf, senza quantization al livello principale.')
+    if export['format'] == 'hf' and 'quantization' in export:
+        raise ValueError('La quantizzazione si specifica solo con export.format=gguf.')
+    raw['quantization'] = export.get('quantization', 'Q4_K_M') if export['format'] == 'gguf' else None
+    if export['format'] == 'gguf' and raw['quantization'] not in QTYPES:
+        raise ValueError('Quantizzazione GGUF non supportata.')
+    raw['build'] = build
+    return raw
 
 
 def path_from(base, value):
@@ -29,10 +84,13 @@ def path_from(base, value):
 def load_config(filename, tags=None, repo=None):
     filename = Path(os.path.expandvars(str(filename))).expanduser().resolve()
     raw = json.loads(filename.read_text(encoding='utf-8-sig'))
+    if not isinstance(raw, dict):
+        raise ValueError('La configurazione deve essere un oggetto JSON.')
+    raw = normalize_v2(raw)
     if not isinstance(raw, dict) or raw.get('mode') not in ('local', 'hf'):
         raise ValueError('Il profilo JSON richiede mode uguale a local o hf.')
     local = raw['mode'] == 'local'
-    common = {'mode', 'model', 'tags', 'quantization', 'build', 'corpus'}
+    common = {'mode', 'model', 'tags', 'quantization', 'build', 'corpus', 'architecture_profile'}
     extra = {'out', 'llama_dir', 'bin_dir'} if local else {'output_repo', 'flavor', 'timeout'}
     if unknown := set(raw) - common - extra:
         raise ValueError(f'Chiavi di configurazione sconosciute: {sorted(unknown)}')
@@ -43,6 +101,14 @@ def load_config(filename, tags=None, repo=None):
            'quantization': raw.get('quantization', 'Q4_K_M'), 'build': raw.get('build', {})}
     if cfg['quantization'] not in (*QTYPES, None):
         raise ValueError(f'quantization deve essere null oppure uno tra {QTYPES}.')
+    if 'architecture_profile' in raw:
+        value = raw['architecture_profile']
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError('architecture_profile deve essere un nome o percorso JSON.')
+        from architecture import BUILTINS
+        if value != 'auto':
+            cfg['architecture'] = load_profile(value if value in BUILTINS else path_from(filename.parent, value))
+            check_export(cfg['architecture'], cfg['quantization'])
     if not isinstance(cfg['model'], str) or not cfg['model'].strip():
         raise ValueError('model deve contenere un ID Hub o una cartella locale.')
     build = cfg['build']
@@ -57,6 +123,11 @@ def load_config(filename, tags=None, repo=None):
     if 'budgets' in build and (not isinstance(build['budgets'], list) or not build['budgets'] or
                                any(type(n) is not int or n < 1 for n in build['budgets'])):
         raise ValueError('budgets deve essere una lista di interi positivi.')
+    if 'keep_fractions' in build:
+        values = build['keep_fractions']
+        if ('budgets' in build or not isinstance(values, list) or not values or any(type(x) not in (int, float)
+                or not math.isfinite(x) or not 0 < x <= 1 for x in values)):
+            raise ValueError('keep_fractions richiede frazioni in (0, 1] ed esclude budgets.')
     if build.get('device', 'auto') not in ('auto', 'cpu', 'cuda') or build.get('dtype', 'auto') not in (
             'auto', 'float32', 'bfloat16', 'float16'):
         raise ValueError('device o dtype non valido.')
@@ -72,7 +143,9 @@ def load_config(filename, tags=None, repo=None):
             raise ValueError('Indicare una nuova cartella out.')
         cfg['out'] = path_from(filename.parent, raw['out'])
         local_model = Path(path_from(filename.parent, cfg['model']))
-        if local_model.is_dir():
+        explicit_path = (cfg['model'].startswith(('.', '~', '$', '%')) or Path(cfg['model']).is_absolute()
+                         or '\\' in cfg['model'])
+        if local_model.is_dir() or explicit_path:
             cfg['model'] = str(local_model)
         for key in ('llama_dir', 'bin_dir'):
             if raw.get(key):
@@ -106,6 +179,8 @@ def build_command(cfg, out):
             cmd.extend([flag, *map(str, values)])
     if cfg.get('corpus'):
         cmd.extend(['--corpus', cfg['corpus']])
+    if cfg.get('architecture'):
+        cmd.extend(['--architecture-profile', json.dumps(cfg['architecture'], separators=(',', ':'))])
     return cmd
 
 
@@ -125,12 +200,24 @@ def main(argv=None):
     parser.add_argument('--tags', nargs='+', help='Sostituisce i tag del profilo')
     parser.add_argument('--repo', help='Repository HF privato di destinazione, nome/repo')
     parser.add_argument('--dry-run', action='store_true', help='Convalida il piano senza download, upload o Job')
+    parser.add_argument('--preflight', action='store_true', help='Legge solo metadati del modello, senza pesi, upload o Job')
     args = parser.parse_args(argv)
     cfg = load_config(args.config, args.tags, args.repo)
+    if args.dry_run and args.preflight:
+        raise ValueError('Scegliere --dry-run (offline) oppure --preflight (metadati).')
     if args.dry_run:
         print(json.dumps(cfg, ensure_ascii=False, indent=2))
         return
+    if args.preflight:
+        from preflight import inspect
+        print(json.dumps(inspect(cfg), ensure_ascii=False, indent=2))
+        return
     if cfg['mode'] == 'local':
+        from preflight import inspect
+        plan = inspect(cfg)
+        cfg['architecture'] = plan['architecture']
+        if plan['source_revision']:
+            cfg['build']['revision'] = plan['source_revision']
         execute(cfg, Path(cfg['out']))
     else:
         from hf_jobs import submit

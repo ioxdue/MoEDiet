@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "id": "qwen4-exp-not-supported",
+  "model_type": "qwen4_exp",
+  "implementation": "unsupported",
+  "reason": "Qwen3.8-Flash-Next richiede un adattatore per qwen4_exp, esperti fusi e runtime compatibile. Non verificato con Transformers 4.55.4: il Job viene bloccato prima del download dei pesi e della spesa di calcolo. I profili qwen2_moe e qwen3_moe non sono sostituti compatibili."
+}
