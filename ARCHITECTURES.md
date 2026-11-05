@@ -15,6 +15,10 @@ codice Python, import dinamici o espressioni da eseguire.
 
 Gli adattatori eseguibili sono fissati a **Transformers 4.55.4**. I test usano
 pesi casuali piccoli, non misurano la qualita dei checkpoint preaddestrati.
+Il comando locale separato `gguf_prune.py` supporta l'inventario e la compattazione
+da selezione esplicita dei GGUF `qwen4exp` nel layout verificato. Non modifica
+questa tabella degli adattatori HF né abilita la profilazione Transformers:
+vedere [Pruning diretto GGUF Qwen3.8](README.md#pruning-diretto-gguf-qwen38).
 Qwen3-MoE e Qwen3.8-Flash-Next sono architetture diverse: il primo profilo non
 abilita il secondo. `architectures/qwen4_exp.json` e un descrittore di mancato
 supporto, non un adattatore funzionante.

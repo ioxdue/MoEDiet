@@ -1,8 +1,113 @@
 # MoEDiet
 
-Da una lista di tag a un checkpoint MoE potato, con selezione e audit separati. Gli adattatori attuali supportano OLMoE, Qwen2-MoE e Qwen3-MoE con Transformers 4.55.4. L'esportazione **GGUF quantizzata** resta disponibile per il profilo OLMoE verificato. Qwen3.8-Flash-Next (`qwen4_exp`) non e ancora implementato e viene bloccato prima del Job.
+Da una lista di tag a un checkpoint MoE potato, con selezione e audit separati. Gli adattatori attuali supportano OLMoE, Qwen2-MoE e Qwen3-MoE con Transformers 4.55.4. L'esportazione **GGUF quantizzata** resta disponibile per il profilo OLMoE verificato. Il percorso HF di Qwen3.8-Flash-Next (`qwen4_exp`) viene ancora bloccato prima del Job. Per i suoi **GGUF già quantizzati** è disponibile il comando locale separato `gguf_prune.py`, descritto sotto: compatta una selezione esplicita, senza profilazione o validazione della qualità.
 
 La guida [ARCHITECTURES.md](ARCHITECTURES.md) descrive i profili JSON personalizzati, lo schema v2, i budget percentuali e i limiti. L'esempio [config.hf.v2.json](config.hf.v2.json) mantiene OLMoE e usa lambda=0. Le configurazioni v1 esistenti restano compatibili. L'originale predefinito e `allenai/OLMoE-1B-7B-0125-Instruct` in formato Hugging Face/safetensors.
+
+## Pruning diretto GGUF Qwen3.8
+
+`gguf_prune.py` legge tutti gli shard locali e copia i blocchi quantizzati degli
+esperti conservati insieme alle righe dei router. Mantiene top-k, PLE, shared expert,
+attenzione, SSM, hyper-connections e tokenizer. Non crea un intermedio F16/BF16.
+Il supporto riguarda l'architettura GGUF `qwen4exp`, con matrici gate/up/down separate
+e router F32. I tipi degli esperti verificati sono Q5_0, IQ3_XXS, IQ4_XS, IQ4_NL,
+Q2_0 e IQ2_S; layout fusi e routing a gruppi sono rifiutati. Metadati array vuoti
+o annidati e GGUF big-endian sono esclusi da questo primo incremento.
+
+### Ambiente e ispezione
+
+Il workspace locale dispone dell'ambiente `.venv-gguf` già preparato. Per ricrearlo
+su un'altra macchina con Python 3.10+ e Git:
+
+```powershell
+python -m venv .venv-gguf
+.\.venv-gguf\Scripts\python.exe -m pip install -r requirements-gguf.txt
+```
+
+La dipendenza è fissata al commit `19cce6919992fdffd92e0ac152caaf1e2b8f254e`
+di llama.cpp. Il solo numero PyPI `gguf==0.19.0` non identifica quella revisione:
+la versione precedentemente installata non include Q2_0. Questo comando non
+richiede PyTorch, Transformers o la compilazione di llama.cpp.
+
+Scaricare separatamente tutti i file della variante desiderata nella stessa
+directory. `--model` indica il primo shard, compreso il caso in cui contenga
+solo tokenizer/metadati. Sostituire il percorso nell'esempio:
+
+```powershell
+$modelGguf = 'D:\modelli\Qwen3.8-Flash-Next-UD-IQ4_XS-00001-of-00004.gguf'
+.\.venv-gguf\Scripts\python.exe .\gguf_prune.py inspect --model $modelGguf --budgets 256 192 128
+```
+
+`inspect` legge le intestazioni e controlla shard, forme, tipi, offset e routing.
+Stampa JSON su stdout; messaggi di avanzamento vanno su stderr. Senza `--hash`
+non legge i payload per calcolare SHA-256 e non dichiara verificati gli hash.
+Le stime usano i byte di ogni tensore, conservando l'overhead sorgente come
+approssimazione. `weights_excluding_ple_bytes` conta i payload senza PLE e senza
+overhead: **non è la RAM totale di inferenza**.
+
+### Selezione e compattazione
+
+Per creare un manifesto valido mantenendo inizialmente tutti gli esperti:
+
+```powershell
+.\.venv-gguf\Scripts\python.exe .\gguf_prune.py inspect --model $modelGguf --identity-selection .\selection.qwen38.json
+```
+
+Questa opzione implica `--hash`: legge tutti gli shard, anche quelli molto grandi.
+Il JSON contiene versione, architettura, nomi/dimensioni/SHA-256 sorgenti,
+`layers` e provenienza. Ogni elemento di `layers` ha `layer` ed `expert_ids`:
+gli ID originali sono ordinati, unici e di uguale numerosità in tutti i layer.
+Per il modello completo analizzato ci sono 48 layer, 512 esperti e top-k 10.
+
+Per una selezione manuale, modificare le liste e impostare
+`provenance.method` a `manual`; mantenere almeno top-k esperti per layer.
+Una traccia esterna può dichiarare `routing_trace` con `trace_sha256`, ma questo
+comando non ne verifica la qualità né la correttezza della profilazione.
+Il template identità non sceglie gli esperti utili alla programmazione.
+Le vecchie maschere HF/OLMoE non sono manifesti GGUF compatibili.
+
+```powershell
+.\.venv-gguf\Scripts\python.exe .\gguf_prune.py compact --model $modelGguf --selection .\selection.qwen38.json --out .\runs\qwen38-gguf
+```
+
+L'output è una nuova directory con `model-00001-of-00004.gguf` e gli altri shard
+(oppure `model.gguf` per ingresso singolo), `selection.json` e `report.json`.
+Il numero degli shard viene conservato. `report.json` riporta gli hash sorgenti
+e finali, la mappa `expert_ids[new_id] = old_id`, i byte effettivi, gli hash dei
+payload e del codice usato, il buffer di copia e il picco residente del processo.
+Il buffer è di 4 MiB; vanno aggiunti metadati/librerie e la page cache del sistema.
+
+La directory viene promossa solo dopo aver riletto e verificato tutti i payload
+finali. Input e destinazioni esistenti non vengono sovrascritti; errori e
+interruzioni gestite rimuovono la directory temporanea. Occorre spazio per
+sorgente più risultato: circa 146,24 GiB per sorgente UD-IQ4_XS e candidato
+256, o 174,48 GiB per la copia identità, oltre a report e margine. Un arresto
+forzato del processo può lasciare una directory `.gguf-prune-*` non promossa.
+
+Lo stato finale è **`compacted_unvalidated`**: `structural_validation.passed=true`
+certifica la trasformazione dei file. `runtime_smoke` e `quality_validation`
+restano `not_run`. Profilazione sul corpus agentico, audit delle distribuzioni,
+inferenza reale e prestazioni Snapdragon sono il passo successivo del
+[piano](PLAN-qwen38-gguf-pruning.md). Non avviare `run.py` aspettandosi questo
+percorso GGUF: il launcher HF mantiene le proprie precondizioni.
+
+### Verifiche locali
+
+```powershell
+.\.venv-gguf\Scripts\python.exe -m unittest -v test_gguf_prune
+```
+
+16 test passati su Windows ARM64: file GGUF reali sintetici con i sei formati,
+shard iniziale senza tensori, selezione identità/ridotta, ID non contigui e
+diversi fra layer, router, metadati e payload preservati, allineamento, input
+errati, corruzione dell'output, spazio insufficiente e interruzione.
+Le intestazioni del checkpoint reale alla revisione
+`d96201194f103c906994f283f504209dc8d2a10c` sono state confrontate con il contratto;
+non sono stati scaricati o eseguiti i 87,24 GiB di pesi.
+La suite storica ha inoltre completato 20 test, con un test nativo OLMoE saltato
+per il tokenizer assente. Il controllo `pip check` dell'ambiente che eredita i
+pacchetti del sistema segnala un'incongruenza preesistente tokenizers/Transformers;
+non ha impedito questi test e il nuovo comando non importa quelle librerie.
 
 ## Scegli dove eseguire
 
