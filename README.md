@@ -4,6 +4,14 @@ Da una lista di tag a un checkpoint MoE potato, con selezione e audit separati. 
 
 La guida [ARCHITECTURES.md](ARCHITECTURES.md) descrive i profili JSON personalizzati, lo schema v2, i budget percentuali e i limiti. L'esempio [config.hf.v2.json](config.hf.v2.json) mantiene OLMoE e usa lambda=0. Le configurazioni v1 esistenti restano compatibili. L'originale predefinito e `allenai/OLMoE-1B-7B-0125-Instruct` in formato Hugging Face/safetensors.
 
+Per inventariare gli header di un checkpoint safetensors senza caricare i pesi,
+usare `python .\run.py --config .\config.json --inspect-safetensors`. Supporta
+directory `mode=local` e repository Hub `mode=hf`; sul Hub risolve la revisione a
+un commit e usa richieste HTTP Range, senza fallback al download completo. Controlla
+indice, shard, forme, dtype e offset, ma non verifica il contratto di un adapter,
+non legge i payload e non abilita `qwen4_exp`. È un inventario, non un preflight
+di supporto o di fattibilità hardware.
+
 ## Pruning diretto GGUF Qwen3.8
 
 `gguf_prune.py` legge tutti gli shard locali e copia i blocchi quantizzati degli

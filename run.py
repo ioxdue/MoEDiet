@@ -81,7 +81,7 @@ def path_from(base, value):
     return str((base / path).resolve())
 
 
-def load_config(filename, tags=None, repo=None):
+def load_config(filename, tags=None, repo=None, metadata_only=False):
     filename = Path(os.path.expandvars(str(filename))).expanduser().resolve()
     raw = json.loads(filename.read_text(encoding='utf-8-sig'))
     if not isinstance(raw, dict):
@@ -106,7 +106,7 @@ def load_config(filename, tags=None, repo=None):
         if not isinstance(value, str) or not value.strip():
             raise ValueError('architecture_profile deve essere un nome o percorso JSON.')
         from architecture import BUILTINS
-        if value != 'auto':
+        if value != 'auto' and not metadata_only:
             cfg['architecture'] = load_profile(value if value in BUILTINS else path_from(filename.parent, value))
             check_export(cfg['architecture'], cfg['quantization'])
     if not isinstance(cfg['model'], str) or not cfg['model'].strip():
@@ -133,7 +133,7 @@ def load_config(filename, tags=None, repo=None):
         raise ValueError('device o dtype non valido.')
     if 'revision' in build and (not isinstance(build['revision'], str) or not build['revision'].strip()):
         raise ValueError('revision deve essere una stringa non vuota.')
-    if raw.get('corpus'):
+    if raw.get('corpus') and not metadata_only:
         cfg['corpus'] = path_from(filename.parent, raw['corpus'])
         make_probes(cfg['tags'], cfg['corpus'])
     if local:
@@ -201,12 +201,25 @@ def main(argv=None):
     parser.add_argument('--repo', help='Repository HF privato di destinazione, nome/repo')
     parser.add_argument('--dry-run', action='store_true', help='Convalida il piano senza download, upload o Job')
     parser.add_argument('--preflight', action='store_true', help='Legge solo metadati del modello, senza pesi, upload o Job')
+    parser.add_argument('--inspect-safetensors', action='store_true',
+                        help='Inventaria header e config SafeTensors locali o Hub senza leggere i payload')
     args = parser.parse_args(argv)
-    cfg = load_config(args.config, args.tags, args.repo)
-    if args.dry_run and args.preflight:
-        raise ValueError('Scegliere --dry-run (offline) oppure --preflight (metadati).')
+    cfg = load_config(args.config, args.tags, args.repo, metadata_only=args.inspect_safetensors)
+    selected_modes = sum((args.dry_run, args.preflight, args.inspect_safetensors))
+    if selected_modes > 1:
+        raise ValueError('Scegliere una sola tra --dry-run, --preflight e --inspect-safetensors.')
     if args.dry_run:
         print(json.dumps(cfg, ensure_ascii=False, indent=2))
+        return
+    if args.inspect_safetensors:
+        from safetensors_metadata import inspect_hub_safetensors, inspect_safetensors
+        if cfg['mode'] == 'local':
+            if not Path(cfg['model']).is_dir():
+                raise ValueError('--inspect-safetensors in mode=local richiede una directory modello esistente.')
+            result = inspect_safetensors(cfg['model'])
+        else:
+            result = inspect_hub_safetensors(cfg['model'], cfg['build'].get('revision'))
+        print(json.dumps(result, ensure_ascii=False, indent=2))
         return
     if args.preflight:
         from preflight import inspect
