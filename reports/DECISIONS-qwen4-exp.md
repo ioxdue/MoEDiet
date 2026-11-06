@@ -98,3 +98,24 @@ non serve un meccanismo di abort oltre a cancel.
 - Il commit esatto del runtime (output di T2).
 - Il confronto finale dei risultati su checkpoint reale (G2, con revisore indipendente).
 - Eventuale percorso MTP preservato e studio GGUF (post-G2, perimetro Nico).
+
+## Aggiornamento 2026-11-07 — percorso qwen3_next per inferenza locale
+
+Obiettivo dichiarato: inferenza locale. Il percorso HF di `qwen4_exp` resta congelato ai gate;
+la richiesta è rivolta a un adapter `qwen3_next` su checkpoint reale con audit di qualità completo.
+
+- **D11 — Target e host:** `Qwen/Qwen3-Next-80B-A3B-Instruct` (revisione fissata
+  `9c7f2fbe84465e40164a94cc16cd30b6999b0cc7`), eseguito su **HF Job** — non sulla workstation —
+  per preservare l'integrità delle soglie di qualità (pipeline MoEDiet con audit separato,
+  non il percorso GGUF corto). Flavor `h200x2`, timeout 12 h.
+- **D12 — Registrazione adapter:** `qwen3_next` è un profilo dichiarativo sul
+  `softmax_topk_modulelist_v1` esistente (runtime 4.57.6: esperti per-esperto ModuleList,
+  gate Linear classico). Nessuna nuova implementazione. Verificato su fixture: contratto
+  9,3e-10, maschera identità esatta, equivalenza mask/compact 0,0, round-trip 1,2e-07.
+- **D13 — Preflight per-profilo:** il controllo hf hard-coded su 4.55.4 è sostituito da un
+  controllo fail-closed: il pin `transformers==` del file requirements del Job deve eguagliare
+  la versione dichiarata nel profilo. File requirements consentiti solo da allowlist;
+  selezionabile dal config (`requirements`). La vecchia coppia profili/4.55.4 continua a passare.
+- **D14 — Sequenza smoke:** primo Job a pagamento = controllo identità B=512 su h200x2
+  (budget atteso 25–40 $); i budget reali (256/128/…) solo dopo esito pulito, un Job per gruppo
+  di budget con audit separato su tag e gruppo di controllo.

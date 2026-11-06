@@ -10,6 +10,7 @@ __pycache__/
 .venv-gguf/
 .venv-qwen4/
 .venv-qwen3next/
+.venv-test4554/
 venv/
 env/
 ENV/

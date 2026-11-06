@@ -1,0 +1,7 @@
+# Isolated runtime for the qwen3_next profile (local-inference target, HF Jobs).
+# The pin must equal the profile's declared transformers_version exactly:
+# preflight refuses the Job before any upload if the two disagree (fail closed).
+torch>=2.6,<3
+transformers==4.57.6
+safetensors>=0.4.3,<1
+accelerate>=1.0

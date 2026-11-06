@@ -12,6 +12,7 @@ import sys
 from gguf_export import QTYPES, export_run
 from probes import clean_tags, make_probes
 from architecture import check_export, load_profile
+from preflight import JOB_REQUIREMENTS
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_MODEL = 'allenai/OLMoE-1B-7B-0125-Instruct'
@@ -91,7 +92,7 @@ def load_config(filename, tags=None, repo=None, metadata_only=False):
         raise ValueError('Il profilo JSON richiede mode uguale a local o hf.')
     local = raw['mode'] == 'local'
     common = {'mode', 'model', 'tags', 'quantization', 'build', 'corpus', 'architecture_profile'}
-    extra = {'out', 'llama_dir', 'bin_dir'} if local else {'output_repo', 'flavor', 'timeout'}
+    extra = {'out', 'llama_dir', 'bin_dir'} if local else {'output_repo', 'flavor', 'timeout', 'requirements'}
     if unknown := set(raw) - common - extra:
         raise ValueError(f'Chiavi di configurazione sconosciute: {sorted(unknown)}')
     names = raw.get('tags') if tags is None else tags
@@ -162,6 +163,10 @@ def load_config(filename, tags=None, repo=None, metadata_only=False):
         if cfg['output_repo'].casefold() == cfg['model'].casefold():
             raise ValueError('Sorgente e repository di destinazione devono essere distinti.')
         cfg.update(flavor=raw.get('flavor', 'l4x1'), timeout=raw.get('timeout', '90m'))
+        requirements = raw.get('requirements', 'requirements.txt')
+        if requirements not in JOB_REQUIREMENTS:
+            raise ValueError('requirements deve essere uno tra: ' + ', '.join(JOB_REQUIREMENTS))
+        cfg['requirements'] = requirements
         if not isinstance(cfg['timeout'], str) or not re.fullmatch(r'[1-9]\d*[smhd]', cfg['timeout']):
             raise ValueError('Timeout non valido (per esempio 90m).')
         if not isinstance(cfg['flavor'], str) or not re.fullmatch(r'[a-z0-9-]+', cfg['flavor']):

@@ -15,7 +15,8 @@ from preflight import check_metadata
 HERE = Path(__file__).resolve().parent
 IMAGE = 'pytorch/pytorch:2.8.0-cuda12.8-cudnn9-devel@sha256:a7103283ea7113e10ae5d014bd2342acebda0bc53164b2f7b1dd6eb7a766bdb6'
 SOURCES = ('moediet.py', 'probes.py', 'routing.py', 'fidelity.py', 'gguf_export.py', 'llama_tools.py',
-           'run.py', 'hf_jobs.py', 'requirements.txt', 'requirements-q4.txt', 'architecture.py', 'adapters.py',
+           'run.py', 'hf_jobs.py', 'requirements.txt', 'requirements-q4.txt', 'requirements-qwen3next.txt',
+           'architecture.py', 'adapters.py',
            'preflight.py', *(f'architectures/{name}.json' for name in BUILTINS))
 # No model, token, local commands, or user-supplied values are interpolated into this program.
 BOOTSTRAP = '''
@@ -30,7 +31,10 @@ with tempfile.TemporaryDirectory() as job:
     code = Path(job) / prefix
     import json
     cfg = json.loads((code / 'request.json').read_text())
-    deps = ['-r', str(code / 'requirements-q4.txt'), 'cmake>=3.28,<4'] if cfg['quantization'] else ['-r', str(code / 'requirements.txt')]
+    req_name = cfg.get('requirements') or ('requirements-q4.txt' if cfg['quantization'] else 'requirements.txt')
+    if req_name not in ('requirements.txt', 'requirements-q4.txt', 'requirements-qwen3next.txt'):
+        raise ValueError('Requirements non consentiti: ' + req_name)
+    deps = ['-r', str(code / req_name), 'cmake>=3.28,<4'] if cfg['quantization'] else ['-r', str(code / req_name)]
     subprocess.run([sys.executable, '-m', 'pip', 'install', *deps], check=True)
     subprocess.run([sys.executable, str(code / 'hf_jobs.py')], cwd=job, check=True)
 '''
@@ -59,6 +63,7 @@ def submit(cfg):
             shutil.copyfile(HERE / name, stage / name)
         payload = {'model': cfg['model'], 'tags': cfg['tags'], 'quantization': cfg['quantization'],
                    'architecture': plan['architecture'],
+                   'requirements': cfg.get('requirements', 'requirements.txt'),
                    'build': {**cfg['build'], 'revision': source.sha}}
         if cfg.get('corpus'):
             shutil.copyfile(cfg['corpus'], stage / 'corpus.json')
