@@ -55,6 +55,11 @@ dichiari `qwen4_exp` (da produrre in T2), mai alla stringa `5.8.0.dev0`. Il vinc
 diventa **per-profilo**: il runtime dell'ambiente deve corrispondere alla versione dichiarata
 nel profilo (oggi il confronto è hard-coded su `4.55.4` e rifiuterebbe il nuovo profilo).
 
+**Confermato in T2 (2026-11-06):** commit `cdb75de4adf71059c01f58dbd2d24d85084a397d`
+(`5.23.0.dev0`), installazione riproducibile da git, import + fixture + round-trip +
+`device_map` verificati in `.venv-qwen4` (PyTorch 2.15.0+cpu). La matrice col torch 2.8.0
+dell'immagine Job resta da verificare allo smoke (T7).
+
 ## D7 — Placement
 
 **Decisione:** per il percorso qwen4, `load_model` usa `device_map='auto'` +

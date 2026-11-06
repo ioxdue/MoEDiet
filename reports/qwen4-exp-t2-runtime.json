@@ -1,0 +1,38 @@
+{
+  "transformers_version": "5.23.0.dev0",
+  "torch_version": "2.15.0+cpu",
+  "pinned_commit": "cdb75de4adf71059c01f58dbd2d24d85084a397d",
+  "real_config_class": "Qwen4ExpConfig",
+  "real_model_type": "qwen4_exp",
+  "real_architectures": [
+    "Qwen4ExpForConditionalGeneration"
+  ],
+  "real_text_model_type": "qwen4_exp_text",
+  "real_norm_topk_prob": true,
+  "real_text_layers": 48,
+  "real_text_experts": 512,
+  "fixture_num_experts": 8,
+  "fixture_logits_shape": [
+    2,
+    7,
+    128
+  ],
+  "router_triple_shapes": [
+    [
+      3,
+      8
+    ],
+    [
+      3,
+      2
+    ],
+    [
+      3,
+      2
+    ]
+  ],
+  "roundtrip_max_abs_diff": 0.0,
+  "roundtrip_missing_keys": [],
+  "roundtrip_unexpected_keys": [],
+  "device_map_max_abs_diff": 0.0
+}
