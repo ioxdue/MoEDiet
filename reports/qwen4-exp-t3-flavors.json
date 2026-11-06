@@ -1,0 +1,423 @@
+{
+  "fetched": "https://huggingface.co/api/jobs/hardware",
+  "flavors": [
+    {
+      "name": "cpu-basic",
+      "prettyName": "CPU Basic",
+      "cpu": "2 vCPU",
+      "ram": "16 GB",
+      "ephemeralStorage": "50 GB",
+      "accelerator": null,
+      "unitCostMicroUSD": 167,
+      "unitCostUSD": 0.000167,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "cpu-upgrade",
+      "prettyName": "CPU Upgrade",
+      "cpu": "8 vCPU",
+      "ram": "32 GB",
+      "ephemeralStorage": "50 GB",
+      "accelerator": null,
+      "unitCostMicroUSD": 500,
+      "unitCostUSD": 0.0005,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "cpu-performance",
+      "prettyName": "CPU Performance",
+      "cpu": "32 vCPU",
+      "ram": "256 GB",
+      "ephemeralStorage": "1024 GB",
+      "accelerator": null,
+      "unitCostMicroUSD": 31667,
+      "unitCostUSD": 0.031667,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "cpu-xl",
+      "prettyName": "CPU XL",
+      "cpu": "16 vCPU",
+      "ram": "124 GB",
+      "ephemeralStorage": "1000 GB",
+      "accelerator": null,
+      "unitCostMicroUSD": 16667,
+      "unitCostUSD": 0.016667,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "t4-small",
+      "prettyName": "Nvidia T4 - small",
+      "cpu": "4 vCPU",
+      "ram": "15 GB",
+      "ephemeralStorage": "50 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "T4",
+        "quantity": "1",
+        "vram": "16 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 6667,
+      "unitCostUSD": 0.006667,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "t4-medium",
+      "prettyName": "Nvidia T4 - medium",
+      "cpu": "8 vCPU",
+      "ram": "30 GB",
+      "ephemeralStorage": "100 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "T4",
+        "quantity": "1",
+        "vram": "16 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 10000,
+      "unitCostUSD": 0.01,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "a10g-small",
+      "prettyName": "Nvidia A10G - small",
+      "cpu": "4 vCPU",
+      "ram": "15 GB",
+      "ephemeralStorage": "110 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "A10G",
+        "quantity": "1",
+        "vram": "24 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 16667,
+      "unitCostUSD": 0.016667,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "a10g-large",
+      "prettyName": "Nvidia A10G - large",
+      "cpu": "12 vCPU",
+      "ram": "46 GB",
+      "ephemeralStorage": "200 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "A10G",
+        "quantity": "1",
+        "vram": "24 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 25000,
+      "unitCostUSD": 0.025,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "a10g-largex2",
+      "prettyName": "2x Nvidia A10G - large",
+      "cpu": "24 vCPU",
+      "ram": "92 GB",
+      "ephemeralStorage": "1000 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "A10G",
+        "quantity": "2",
+        "vram": "48 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 50000,
+      "unitCostUSD": 0.05,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "a10g-largex4",
+      "prettyName": "4x Nvidia A10G - large",
+      "cpu": "48 vCPU",
+      "ram": "184 GB",
+      "ephemeralStorage": "2000 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "A10G",
+        "quantity": "4",
+        "vram": "96 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 83334,
+      "unitCostUSD": 0.083334,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "a100-large",
+      "prettyName": "Nvidia A100 - large",
+      "cpu": "12 vCPU",
+      "ram": "142 GB",
+      "ephemeralStorage": "1000 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "A100",
+        "quantity": "1",
+        "vram": "80 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 41667,
+      "unitCostUSD": 0.041667,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "a100x4",
+      "prettyName": "4x Nvidia A100",
+      "cpu": "48 vCPU",
+      "ram": "568 GB",
+      "ephemeralStorage": "4000 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "A100",
+        "quantity": "4",
+        "vram": "320 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 166667,
+      "unitCostUSD": 0.166667,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "a100x8",
+      "prettyName": "8x Nvidia A100",
+      "cpu": "96 vCPU",
+      "ram": "1136 GB",
+      "ephemeralStorage": "8000 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "A100",
+        "quantity": "8",
+        "vram": "640 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 333333,
+      "unitCostUSD": 0.333333,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "h200",
+      "prettyName": "Nvidia H200",
+      "cpu": "23 vCPU",
+      "ram": "256 GB",
+      "ephemeralStorage": "3000 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "H200",
+        "quantity": "1",
+        "vram": "141 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 83333,
+      "unitCostUSD": 0.083333,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "h200x2",
+      "prettyName": "Nvidia H200",
+      "cpu": "46 vCPU",
+      "ram": "512 GB",
+      "ephemeralStorage": "6000 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "H200",
+        "quantity": "2",
+        "vram": "282 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 166667,
+      "unitCostUSD": 0.166667,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "h200x4",
+      "prettyName": "Nvidia H200",
+      "cpu": "92 vCPU",
+      "ram": "1024 GB",
+      "ephemeralStorage": "12000 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "H200",
+        "quantity": "4",
+        "vram": "564 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 333333,
+      "unitCostUSD": 0.333333,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "h200x8",
+      "prettyName": "Nvidia H200",
+      "cpu": "184 vCPU",
+      "ram": "2048 GB",
+      "ephemeralStorage": "24000 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "H200",
+        "quantity": "8",
+        "vram": "1128 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 666667,
+      "unitCostUSD": 0.666667,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "rtx-pro-6000",
+      "prettyName": "Nvidia RTX PRO 6000",
+      "cpu": "23 vCPU",
+      "ram": "256 GB",
+      "ephemeralStorage": "475 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "RTX PRO 6000",
+        "quantity": "1",
+        "vram": "96 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 45833,
+      "unitCostUSD": 0.045833,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "rtx-pro-6000x2",
+      "prettyName": "Nvidia RTX PRO 6000",
+      "cpu": "46 vCPU",
+      "ram": "512 GB",
+      "ephemeralStorage": "950 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "RTX PRO 6000",
+        "quantity": "2",
+        "vram": "192 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 91667,
+      "unitCostUSD": 0.091667,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "rtx-pro-6000x4",
+      "prettyName": "Nvidia RTX PRO 6000",
+      "cpu": "92 vCPU",
+      "ram": "1024 GB",
+      "ephemeralStorage": "1900 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "RTX PRO 6000",
+        "quantity": "4",
+        "vram": "384 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 183333,
+      "unitCostUSD": 0.183333,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "rtx-pro-6000x8",
+      "prettyName": "Nvidia RTX PRO 6000",
+      "cpu": "184 vCPU",
+      "ram": "2048 GB",
+      "ephemeralStorage": "3800 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "RTX PRO 6000",
+        "quantity": "8",
+        "vram": "768 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 366667,
+      "unitCostUSD": 0.366667,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "l4x1",
+      "prettyName": "1x Nvidia L4",
+      "cpu": "8 vCPU",
+      "ram": "30 GB",
+      "ephemeralStorage": "400 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "L4",
+        "quantity": "1",
+        "vram": "24 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 13333,
+      "unitCostUSD": 0.013333,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "l4x4",
+      "prettyName": "4x Nvidia L4",
+      "cpu": "48 vCPU",
+      "ram": "186 GB",
+      "ephemeralStorage": "3200 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "L4",
+        "quantity": "4",
+        "vram": "96 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 63333,
+      "unitCostUSD": 0.063333,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "l40sx1",
+      "prettyName": "1x Nvidia L40S",
+      "cpu": "8 vCPU",
+      "ram": "62 GB",
+      "ephemeralStorage": "380 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "L40S",
+        "quantity": "1",
+        "vram": "48 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 30000,
+      "unitCostUSD": 0.03,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "l40sx4",
+      "prettyName": "4x Nvidia L40S",
+      "cpu": "48 vCPU",
+      "ram": "382 GB",
+      "ephemeralStorage": "3200 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "L40S",
+        "quantity": "4",
+        "vram": "192 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 138333,
+      "unitCostUSD": 0.138333,
+      "unitLabel": "minute"
+    },
+    {
+      "name": "l40sx8",
+      "prettyName": "8x Nvidia L40S",
+      "cpu": "192 vCPU",
+      "ram": "1534 GB",
+      "ephemeralStorage": "6500 GB",
+      "accelerator": {
+        "type": "gpu",
+        "model": "L40S",
+        "quantity": "8",
+        "vram": "384 GB",
+        "manufacturer": "Nvidia"
+      },
+      "unitCostMicroUSD": 391666,
+      "unitCostUSD": 0.391666,
+      "unitLabel": "minute"
+    }
+  ]
+}
