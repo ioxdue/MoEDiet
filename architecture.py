@@ -9,7 +9,7 @@ import re
 
 PROFILES = Path(__file__).resolve().parent / 'architectures'
 IMPLEMENTATION = 'softmax_topk_modulelist_v1'
-BUILTINS = ('olmoe', 'qwen2_moe', 'qwen3_moe', 'qwen4_exp')
+BUILTINS = ('olmoe', 'qwen2_moe', 'qwen3_moe', 'qwen3_next', 'qwen4_exp')
 
 
 def read_path(obj, path):

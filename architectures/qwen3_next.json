@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "qwen3-next-transformers-4.57.6",
+  "model_type": "qwen3_next",
+  "implementation": "softmax_topk_modulelist_v1",
+  "transformers_version": "4.57.6",
+  "layout": {
+    "backbone": "model", "layers": "model.layers", "block": "mlp",
+    "router": "gate", "experts": "experts", "count": "num_experts",
+    "top_k": "top_k", "normalize": "norm_topk_prob"
+  },
+  "config": {
+    "layers": "num_hidden_layers", "experts": "num_experts",
+    "top_k": "num_experts_per_tok", "normalize": "norm_topk_prob",
+    "context": "max_position_embeddings"
+  },
+  "layer_selection": "qwen_sparse_step",
+  "shared_experts": [
+    {"module": "shared_expert", "gate": "shared_expert_gate", "activation": "sigmoid"}
+  ]
+}

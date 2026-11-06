@@ -1,0 +1,45 @@
+{
+  "transformers_version": "4.57.6",
+  "torch_version": "2.15.0+cpu",
+  "layer_indices": [
+    1,
+    2,
+    3
+  ],
+  "contract": {
+    "passed": true,
+    "tokens": 14,
+    "max_abs_delta": 9.313225746154785e-10,
+    "tolerance": {
+      "atol": 0.0001,
+      "rtol": 1e-05
+    }
+  },
+  "identity_mask_exact": true,
+  "mask_vs_compact_max_abs_diff": 0.0,
+  "config_num_experts_after_compact": 4,
+  "roundtrip_max_abs_diff": 1.1920928955078125e-07,
+  "reloaded_num_experts": 4,
+  "reloaded_blocks": 3,
+  "real_checkpoint": {
+    "repo": "Qwen/Qwen3-Coder-Next",
+    "layers": 48,
+    "layer_indices_head_tail": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        46,
+        47
+      ]
+    ],
+    "experts_per_layer": 512,
+    "experts_per_token": 10,
+    "norm_topk_prob": true,
+    "mlp_only_layers": [],
+    "decoder_sparse_step": 1,
+    "profile_id": "qwen3-next-transformers-4.57.6"
+  }
+}
