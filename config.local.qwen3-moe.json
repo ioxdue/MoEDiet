@@ -3,8 +3,8 @@
   "mode": "local",
   "model": {"id": "./models/qwen3-moe"},
   "architecture_profile": "architectures/qwen3_moe.json",
-  "tags": ["python", "c++", "devops"],
-  "corpus": "corpora/dev-expanded-v1.json",
+  "tags": ["agents", "tools", "evals"],
+  "corpus": "corpora/agents-v1.json",
   "out": "runs/qwen3-moe",
   "pruning": {
     "keep_fractions": [0.75, 0.875, 0.9375, 0.96875],

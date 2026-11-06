@@ -226,7 +226,7 @@ del profilo iniziale, senza allentare la soglia di fedeltà:
 | Soglia KL | 0,10 nat/token, separatamente per ogni gruppo |
 | Penalità del controllo `lambda` | 0,5 |
 | Continuazione di riferimento | Fino a 32 token per sonda; EOS può terminarla prima |
-| Corpus | `corpora/dev-expanded-v1.json` |
+| Corpus | `corpora/agents-v1.json` |
 | Esecuzione | Una L4, BF16, timeout 90 minuti, export Q4_K_M |
 | Destinazione predefinita | `operator/moediet-runs`, obbligatoriamente privata |
 

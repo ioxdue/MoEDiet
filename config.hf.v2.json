@@ -6,8 +6,8 @@
     "revision": "b89a7c4bc24fb9e55ce2543c9458ce0ca5c4650e"
   },
   "architecture_profile": "architectures/olmoe.json",
-  "tags": ["python", "c++", "devops"],
-  "corpus": "corpora/dev-expanded-v1.json",
+  "tags": ["agents", "tools", "evals"],
+  "corpus": "corpora/agents-v1.json",
   "output_repo": "operator/moediet-runs",
   "flavor": "l4x1",
   "timeout": "90m",

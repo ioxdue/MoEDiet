@@ -2,15 +2,15 @@
   "mode": "hf",
   "model": "allenai/OLMoE-1B-7B-0125-Instruct",
   "tags": [
-    "python",
-    "c++",
-    "devops"
+    "agents",
+    "tools",
+    "evals"
   ],
   "output_repo": "operator/moediet-runs",
   "flavor": "l4x1",
   "timeout": "90m",
   "quantization": "Q4_K_M",
-  "corpus": "corpora/dev-expanded-v1.json",
+  "corpus": "corpora/agents-v1.json",
   "build": {
     "budgets": [
       48,
