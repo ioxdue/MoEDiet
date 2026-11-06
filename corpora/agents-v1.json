@@ -1,0 +1,128 @@
+{
+  "profile": {
+    "agents": [
+      "An agent retries a failed tool call with byte-identical arguments five times and then gives up. Explain how to attribute the failure between planner, tool contract, and retry policy, and design bounded retries with escalation.",
+      "Two agent workers read a shared task queue and both start the same item. Explain the claim race and design idempotent claiming with a lease and expiry.",
+      "An agent's context fills with old tool outputs and it loses track of the original goal. Explain context degradation and design a compaction step that writes an explicit state note before discarding history.",
+      "A twelve-step plan derails at step three, but the agent keeps executing the remaining steps. Explain why step-local success hides global failure, and design replanning triggers with checkpoints.",
+      "An agent delegates a subtask to a helper agent that returns a confident but wrong answer. Explain verification of delegated results and design a review step proportional to the risk of the subtask.",
+      "An agent declares success on a goal with ambiguous success criteria. Explain goal operationalization and design explicit acceptance checks that must pass before termination.",
+      "Across sessions, an agent's memory accumulates outdated facts that keep resurfacing. Explain memory write policies and design supersession so corrected facts replace stale ones.",
+      "An agent oscillates between two states, alternating the same two actions without progress. Explain cycle detection in the trajectory and design a termination rule that forces a different strategy."
+    ],
+    "tools": [
+      "A tool schema declares its date argument as a string, and the model passes 'tomorrow'. Explain schema validation versus semantic validation, and design a normalization layer with clear errors.",
+      "Two tools with overlapping responsibilities return conflicting results for the same query. Explain tool granularity and design a single source of truth with documented precedence.",
+      "A retry after a timeout causes a destructive delete tool to run twice. Explain idempotency keys and design the tool contract so repeated calls are safe.",
+      "A tool returns fifty thousand tokens and the instruction is buried. Explain output shaping and design summarized tool responses with pointers to full data.",
+      "Mid-session, a tool starts returning 401 and the agent loops on the same call. Explain credential lifecycle and design refresh handling with a limited re-auth budget.",
+      "The agent issues parallel tool calls that have a hidden dependency, and they execute in the wrong order. Explain dependency declaration and design the scheduler to respect explicit prerequisites.",
+      "A sandboxed code-execution tool can still read the host's environment variables. Explain sandbox boundaries and design the minimal filesystem, network, and environment policy.",
+      "A prompt demands strict JSON, but the model wraps it in a markdown fence and downstream parsing crashes. Explain constrained decoding and output repair, and design a tolerant extraction step."
+    ],
+    "evals": [
+      "An agent scores 95% on unit-style tool tests but fails long-horizon tasks. Explain the gap between capability probes and trajectory quality, and design a two-level eval suite.",
+      "A trace shows the agent took forty steps for a task that needs five, with no failure logged. Explain efficiency metrics and design step and cost budgets per task class.",
+      "After a prompt change, last week's 90% eval score drops to 60%. Explain eval versioning and design a regression gate that blocks the change.",
+      "An agent learns to satisfy the automated grader by matching expected keywords without solving the task. Explain reward hacking and design held-out and dual grading.",
+      "Offline evals look strong, but production users report degraded behavior. Explain distribution shift and design production sampling with canary tasks.",
+      "Eval runs are flaky: identical inputs produce different trajectories because tool latency varies. Explain nondeterminism sources and design stable pass criteria.",
+      "The full eval harness takes six hours per run, so engineers skip it. Explain stratified sampling and design a fast gate that preserves coverage.",
+      "Human reviewers disagree with the automated grader on borderline trajectories. Explain adjudication and design a calibration set that ties grader scores to human judgment."
+    ],
+    "__control__": [
+      "A houseplant develops yellow lower leaves while the soil stays wet for days. Explain competing causes and propose observations to discriminate between them before changing the care routine.",
+      "Seedlings on a windowsill lean strongly to one side. Explain the underlying stimulus and compare rotating the tray with improving light distribution.",
+      "A compass bearing disagrees with the map's true-north lines. Explain declination and work through converting one bearing into the other.",
+      "Two landmarks on a hiking map appear misaligned with the terrain. Explain how to resect a position using two bearings and estimate the error.",
+      "Two guitar strings sound beats when played together. Explain interference and describe how to bring them to the same pitch.",
+      "A melody in one key must be transposed for a singer. Explain the interval relationships and transpose a short phrase step by step.",
+      "A calendar application must span a leap day. Explain how date arithmetic changes and give a concrete check for a range crossing February 29.",
+      "Two wall clocks disagree after one changes battery. Explain drift and design a reproducible check to decide which clock to trust."
+    ]
+  },
+  "select": {
+    "agents": [
+      "An agent's loop has no maximum iteration count and it runs overnight on a trivial task. Explain termination conditions and give a concrete design combining step limits, progress checks, and budget caps.",
+      "A planner emits a full plan before seeing any tool results. Explain replan-on-evidence and rewrite the loop so each tool result can revise the remaining plan.",
+      "Two cooperating agents deadlock, each waiting for the other's partial result. Explain dependency inversion and give a concrete protocol with explicit handoff points.",
+      "An agent picks the first plausible action instead of comparing alternatives. Explain option comparison and give a small scoring scheme the agent can apply per decision.",
+      "A sub-agent is spawned with the entire parent context and duplicates its work. Explain context inheritance and give a minimal brief format for delegation.",
+      "The agent cannot tell whether a tool failure is permanent or transient. Explain error classification and give a decision table for retry, alternative tool, and abort.",
+      "An agent's self-summary after a long task contradicts its own earlier notes. Explain provenance in state notes and give a merge rule for conflicting summaries.",
+      "A user interrupts an agent mid-task with a new priority. Explain interruption handling and give a design that parks state safely and resumes or rolls back cleanly."
+    ],
+    "tools": [
+      "A search tool accepts a free-text query and returns irrelevant results half the time. Explain query construction and give a concrete reformulation strategy with filters.",
+      "A code-editing tool applies patches that sometimes corrupt nearby lines. Explain patch scoping and give a design using anchors plus a verification read-back.",
+      "Tool arguments come from user text and may contain injection attempts. Explain prompt-injection boundaries and give a validation scheme separating instructions from data.",
+      "A file-writing tool silently truncates paths beyond a length limit. Explain contract documentation and give a preflight validation the agent can run before the call.",
+      "Two versions of the same tool exist after a migration, with different semantics. Explain version pinning and give a discovery step that resolves which tool to call.",
+      "A tool's latency varies from milliseconds to minutes. Explain timeout policy and give a design with per-tool budgets and asynchronous completion checks.",
+      "An API tool paginates results and the agent stops after the first page. Explain completeness checks and give a loop design that continues until an explicit end marker.",
+      "A tool returns an error enum the model has never seen. Explain graceful degradation and give a fallback chain from retry to alternative tool to asking the user."
+    ],
+    "evals": [
+      "You inherit an agent eval suite where every task passes trivially. Explain task difficulty calibration and give a method to introduce discriminating cases.",
+      "An eval asserts on intermediate steps, but agents reach the goal by different valid routes. Explain outcome-based grading and give a rubric that tolerates path variation.",
+      "Eval scores vary between runs by more than the claimed improvement. Explain statistical significance and give a design with repeated runs and confidence intervals.",
+      "A new capability is added but no eval covers it, so a regression ships. Explain coverage mapping and give a rule linking every tool and behavior to at least one eval.",
+      "Grader code is edited in the same commit as the agent it grades. Explain separation of concerns and give a review workflow that keeps graders independent.",
+      "An eval environment leaks state between consecutive tasks. Explain isolation and give a checklist for resetting filesystem, memory, and credentials per case.",
+      "Trajectories are stored but never mined after a failure. Explain failure analysis and give a tagging scheme that clusters root causes across runs.",
+      "The eval reports an average score that hides a catastrophic tail. Explain distributional reporting and give a dashboard with percentiles and worst cases."
+    ],
+    "__control__": [
+      "A potted tomato plant flowers but sets no fruit. Explain pollination and growing conditions, and propose two observations to identify the limiting factor.",
+      "Stored seeds from last year fail to germinate. Explain viability testing and give a simple protocol with a control batch.",
+      "A hiker must estimate walking time from a contour map. Explain gradient and distance trade-offs and give a worked estimate for a short section.",
+      "Wind pushes a boat off its intended bearing. Explain leeway and give a correction procedure using a compass course.",
+      "A chord in a song sounds unstable before resolving. Explain tension and resolution and identify the likely chord function.",
+      "A recording sounds out of tune against an instrument. Explain beat frequencies and give a step-by-step tuning check.",
+      "Three friends split a bill unevenly after sharing items. Explain a fair reconciliation and give a concrete calculation.",
+      "Five recorded distances have one obvious outlier. Explain robust averaging and give a rule for deciding whether to exclude it."
+    ]
+  },
+  "audit": {
+    "agents": [
+      "A pruned agent model answers tool-calling prompts as fluently as the original, but audit traces show it invents tool names under pressure. Explain which capability the probe scores actually measure and design an audit that catches hallucinated tools.",
+      "After pruning, the agent still solves familiar tasks but ignores the stated success criteria in novel ones. Explain generalization versus memorization in trajectories and design an audit with unseen goals.",
+      "The original agent escalates to a human when uncertain; the pruned one always guesses. Explain abstention as a behavior and design an audit that rewards correct refusals.",
+      "A masked agent passes identity checks but produces longer, wandering plans. Explain plan efficiency as a first-class metric and design an audit comparing step counts on fixed tasks.",
+      "Two pruned variants differ in size by a factor of two but score the same on aggregate. Explain per-task decomposition and design an audit that finds where each variant wins and loses.",
+      "The agent's tone and formatting drift after pruning while answers stay correct. Explain surface behavior as a quality dimension and design an audit with style constraints.",
+      "Under multi-turn conversation, the pruned agent forgets earlier constraints faster. Explain context retention and design an audit with constraint checks at increasing depth.",
+      "An agent that must ask clarifying questions instead answers immediately with assumptions. Explain clarification behavior and design an audit with intentionally ambiguous tasks."
+    ],
+    "tools": [
+      "A pruned model emits valid JSON for tool calls less often on long contexts. Explain how context length interacts with structured output and design an audit sweeping input sizes.",
+      "The model chooses a reasonable but suboptimal tool when a better one exists. Explain tool selection granularity and design an audit with near-miss alternatives.",
+      "After pruning, argument values are syntactically valid but semantically wrong more often. Explain value grounding and design an audit that checks arguments against the user's actual data.",
+      "The model stops verifying tool results before acting on them. Explain verification behavior and design an audit where tools return subtly wrong data.",
+      "Parallel tool calls collapse into sequential ones after pruning, doubling latency. Explain call planning and design an audit measuring independence detection.",
+      "The model mishandles a new tool added after training. Explain tool generalization and design an audit with held-out tools described only by schema.",
+      "Error recovery degrades: the model repeats a failing call instead of switching strategy. Explain recovery diversity and design an audit injecting transient and permanent failures.",
+      "The pruned model leaks its reasoning about tool credentials into visible output. Explain information boundary behavior and design an audit probing for secret material."
+    ],
+    "evals": [
+      "The pruned model's eval scores match the original on the benchmark suite, but a manual review of twenty trajectories finds systematic reasoning shortcuts. Explain the limits of aggregate scoring and design a trajectory audit.",
+      "An audit compares masked and compacted models on the same eval but with different random seeds. Explain seed sensitivity and design a comparison with matched seeds and repetitions.",
+      "The control group improves when the target group does not, suggesting the eval moved. Explain control-group interpretation and design an audit that isolates model effects from suite effects.",
+      "KL divergence between original and pruned log-probabilities is tiny, yet users report worse task success. Explain the gap between token-level and trajectory-level fidelity and design an outcome audit.",
+      "An audit pass at budget 384 fails the KL threshold while budget 496 passes, but quality judges prefer 384's outputs. Explain threshold governance and design a dual-gate audit with both metrics.",
+      "The audit corpus over-represents short tasks, so pruning harm on long tasks is invisible. Explain coverage bias and design a stratified audit by task horizon.",
+      "A pruned agent passes all evals but its cost per solved task doubles. Explain efficiency-adjusted quality and design an audit that reports quality per unit cost.",
+      "The audit finds failures concentrated in one tool cluster. Explain slice analysis and design an audit report that breaks scores down by capability slice."
+    ],
+    "__control__": [
+      "A shrub shows frost damage on new shoots while woody parts look intact. Explain how to assess damage over time and why removing every affected branch immediately may be premature.",
+      "A clay pot dries unevenly, with one side always wet. Explain soil structure and porosity and propose a check before repotting.",
+      "A map scale reads 1:25000 and a trail section measures six centimetres. Explain the conversion and give the real distance with a sanity check.",
+      "Two position fixes from different landmarks disagree slightly. Explain error sources and give a rule for choosing the more reliable fix.",
+      "A melody transposed up a major third exceeds the instrument's range. Explain octave displacement and give a rearrangement strategy.",
+      "A rhythm in six-eight time is hard to count. Explain compound meter and give a counting method that groups the beats.",
+      "A recipe scaled for three people must serve five. Explain proportional scaling and give the adjusted quantities for two ingredients.",
+      "A temperature conversion between Celsius and Fahrenheit looks wrong. Explain the linear transform and give a reversible check with one known value."
+    ]
+  }
+}
