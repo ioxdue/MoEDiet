@@ -12,7 +12,7 @@
   "requirements": "requirements-qwen3next.txt",
   "build": {
     "revision": "9c7f2fbe84465e40164a94cc16cd30b6999b0cc7",
-    "budgets": [64, 128],
+    "budgets": [192, 256, 320, 384],
     "eval_tokens": 8,
     "post_quant_min_first_token": 0.95,
     "post_quant_min_full_match": 0.40
