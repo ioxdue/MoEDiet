@@ -12,6 +12,9 @@ class Trace:
     group: str
     prefix: torch.Tensor  # Input through the penultimate token, on CPU.
     original: torch.Tensor  # Log probabilities for the generated positions, on CPU.
+    prompt_len: int = 0  # Encoded prompt tokens; continuation starts at prefix[prompt_len - 1].
+    generated: torch.Tensor = None  # Continuation token ids incl. the last position, on CPU.
+    prompt_text: str = ''  # Decoded encoded prompt; replay text for llama-cli.
 
 
 @torch.inference_mode()
@@ -35,7 +38,10 @@ def make_traces(model, tokenizer, groups, steps):
             if used < 1:
                 raise ValueError('Il modello di riferimento ha generato una continuazione vuota.')
             prefix = sequence[:, :-1].cpu()
-            traces.append(Trace(group, prefix, log_probs(model, prefix, used)))
+            generated = sequence[0, ids.shape[1]:].cpu()
+            prompt_text = tokenizer.decode(ids[0], skip_special_tokens=False)
+            traces.append(Trace(group, prefix, log_probs(model, prefix, used),
+                                ids.shape[1], generated, prompt_text))
     return traces
 
 

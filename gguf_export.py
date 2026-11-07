@@ -107,13 +107,30 @@ def export_run(run, qtype='Q4_K_M', llama_dir=None, bin_dir=None):
                 decode = (None, '2')
         if smoke.returncode or not prefill or not decode:
             raise ValueError('Smoke test llama-cli fallito.\n' + (logs + '\n' + out)[-2200:])
+        quality = None
+        reference = report.get('post_quant_reference')
+        if reference:
+            from post_quant import evaluate, passes as quality_passes, thresholds_from_report
+            from transformers import AutoTokenizer
+            print('Valutazione qualità post-quantizzazione...', flush=True)
+            tok = AutoTokenizer.from_pretrained(run / 'checkpoint')
+            thresholds = thresholds_from_report(report)
+            metrics = evaluate(result, tools.server, reference, tok, env=env)
+            quality = {'method': 'greedy_continuation_match', **metrics,
+                       'thresholds': {'first_token_agreement': thresholds.first_token_agreement,
+                                      'full_continuation_match': thresholds.full_continuation_match},
+                       'passed': quality_passes(metrics, thresholds)}
+            if not quality['passed']:
+                raise ValueError('Valutazione post-quantizzazione non superata: '
+                                 + json.dumps(metrics['overall'], ensure_ascii=False))
         record = {'file': result.name, 'quantization': qtype, 'bytes': result.stat().st_size,
                   'sha256': sha256(result), 'llama_cpp_revision': tools.revision,
                   'layers': cfg['num_hidden_layers'], 'experts_per_layer': cfg['num_experts'],
                   'experts_per_token': cfg['num_experts_per_tok'], 'expert_tensor_types': counts,
                   'smoke': {'backend': 'llama.cpp/CPU', 'requested_tokens': 2, 'passed': True,
                             'prompt_tokens_evaluated': int(prefill[1]), 'decode_steps': int(decode[1])},
-                  'post_quantization_task_quality_measured': False}
+                  'post_quantization_task_quality_measured': quality is not None,
+                  'post_quantization_task_quality': quality}
         (stage / 'conversion.json').write_text(json.dumps(record, indent=2) + '\n', encoding='utf-8')
         stage.rename(dest)
     print(f'GGUF verificato: {dest / result.name}', flush=True)

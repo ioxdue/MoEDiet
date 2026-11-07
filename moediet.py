@@ -117,9 +117,25 @@ def verify_manifest(meta, model, source):
 
 
 @torch.inference_mode()
+def post_quant_reference(traces, tokenizer):
+    """Compact replay reference for the post-quantization gate (gguf_export/post_quant)."""
+    eos = tokenizer.eos_token_id
+    reference = []
+    for trace in traces:
+        cont = [int(t) for t in trace.generated if int(t) != eos]
+        prompt_ids = [int(t) for t in trace.prefix[0, :trace.prompt_len]]
+        reference.append({'group': trace.group, 'prompt': trace.prompt_text,
+                          'prompt_ids': prompt_ids, 'continuation': cont})
+    return reference
+
+
 def build(args, work, device):
     if not (math.isfinite(args.penalty) and args.penalty >= 0 and math.isfinite(args.max_kl) and args.max_kl >= 0):
         raise ValueError('Lambda e soglia KL devono essere finite e non negative.')
+    for name in ('post_quant_min_first_token', 'post_quant_min_full_match'):
+        value = getattr(args, name)
+        if not (math.isfinite(value) and 0.0 <= value <= 1.0):
+            raise ValueError(f'{name} deve essere in [0, 1].')
     if args.eval_tokens < 1:
         raise ValueError('--eval-tokens deve essere positivo.')
     tags = clean_tags(args.tags)
@@ -206,6 +222,13 @@ def build(args, work, device):
         if passed:
             report['checkpoint'] = {**size_of(compact), 'safetensors_bytes': sum(
                 file.stat().st_size for file in path.glob('*.safetensors'))}
+            # Greedy-continuations from the PRUNED checkpoint isolate quantization
+            # damage in the post-quantization gate (gguf_export/post_quant.py).
+            ref_traces = make_traces(compact, tok, corpus['audit'], args.eval_tokens)
+            report['post_quant_reference'] = post_quant_reference(ref_traces, tok)
+            report['post_quant_thresholds'] = {
+                'first_token_agreement': args.post_quant_min_first_token,
+                'full_continuation_match': args.post_quant_min_full_match}
         else:
             status = 'mask_only_checkpoint_audit_failed'
         del compact
@@ -269,6 +292,10 @@ def main(argv=None):
     builder.add_argument('--lambda', dest='penalty', type=float, default=0.5)
     builder.add_argument('--max-kl', type=float, default=0.10, help='Soglia per ogni gruppo, in nat/token')
     builder.add_argument('--eval-tokens', type=int, default=8)
+    builder.add_argument('--post-quant-min-first-token', type=float, default=0.95,
+                         help="Accettazione GGUF: accordo minimo sul primo token (globale)")
+    builder.add_argument('--post-quant-min-full-match', type=float, default=0.40,
+                         help="Accettazione GGUF: match completo minimo della continuazione (globale)")
     builder.add_argument('--corpus', type=Path, help='JSON di sonde personalizzate')
     builder.add_argument('--mask-only', action='store_true')
     builder.add_argument('--gguf', choices=['Q4_K_M', 'Q4_0'], help='Esporta anche il checkpoint in GGUF Q4')

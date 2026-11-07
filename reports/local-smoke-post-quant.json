@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "thresholds": {
+    "first_token_agreement": 0.95,
+    "full_continuation_match": 0.4
+  },
+  "pruned_b8_vs_pruned_reference": {
+    "passed": false,
+    "expect_pass": false,
+    "overall": {
+      "prompts": 4,
+      "first_token_agreement": 0.25,
+      "full_continuation_match": 0.0,
+      "mean_prefix_fraction": 0.03125
+    }
+  },
+  "full_vs_original_reference": {
+    "passed": true,
+    "expect_pass": true,
+    "overall": {
+      "prompts": 4,
+      "first_token_agreement": 1.0,
+      "full_continuation_match": 0.5,
+      "mean_prefix_fraction": 0.6875
+    }
+  },
+  "negative_control_shifted": {
+    "passed": false,
+    "expect_pass": false,
+    "overall": {
+      "prompts": 4,
+      "first_token_agreement": 0.0,
+      "full_continuation_match": 0.0,
+      "mean_prefix_fraction": 0.0
+    }
+  }
+}

@@ -13,7 +13,7 @@ from pathlib import Path
 
 COMMIT = 'a7a98e0fffed794396b3fbad4dcdbbc184963645'  # llama.cpp b6500
 ARCHIVE_SHA256 = '4d78e6aa4a9124b58dff994416525294fbab2990fe905a640d4cbd26bf563a31'
-TARGETS = ('llama-quantize', 'llama-cli')
+TARGETS = ('llama-quantize', 'llama-cli', 'llama-server')
 
 
 def sha256(path):
@@ -29,6 +29,7 @@ class Tools:
     source: Path
     quantize: Path
     cli: Path
+    server: Path
     revision: str
 
 
@@ -75,7 +76,7 @@ def get_tools(source=None, binary_dir=None):
             tar.extractall(work, filter='data')
         src, build = work / ('llama.cpp-' + COMMIT), work / 'build'
         flags = ['-DCMAKE_BUILD_TYPE=Release', '-DGGML_NATIVE=OFF', '-DGGML_CUDA=OFF', '-DLLAMA_CURL=OFF',
-                 '-DLLAMA_BUILD_TESTS=OFF', '-DLLAMA_BUILD_EXAMPLES=OFF', '-DLLAMA_BUILD_SERVER=OFF',
+                 '-DLLAMA_BUILD_TESTS=OFF', '-DLLAMA_BUILD_EXAMPLES=OFF', '-DLLAMA_BUILD_SERVER=ON',
                  '-DBUILD_SHARED_LIBS=OFF']
         if os.name == 'nt' and platform.machine().upper() in ('ARM64', 'AARCH64'):
             flags += ['-G', 'Visual Studio 17 2022', '-A', 'ARM64']

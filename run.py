@@ -18,7 +18,9 @@ HERE = Path(__file__).resolve().parent
 DEFAULT_MODEL = 'allenai/OLMoE-1B-7B-0125-Instruct'
 BUILD_FLAGS = {'budgets': '--budgets', 'lambda': '--lambda', 'max_kl': '--max-kl',
                'eval_tokens': '--eval-tokens', 'dtype': '--dtype', 'device': '--device', 'revision': '--revision',
-               'keep_fractions': '--keep-fractions'}
+               'keep_fractions': '--keep-fractions',
+               'post_quant_min_first_token': '--post-quant-min-first-token',
+               'post_quant_min_full_match': '--post-quant-min-full-match'}
 
 
 def normalize_v2(raw):
@@ -54,11 +56,12 @@ def normalize_v2(raw):
         if key in pruning:
             put(key, pruning[key])
     validation = raw.pop('validation', {})
-    if not isinstance(validation, dict) or set(validation) - {'max_kl', 'eval_tokens', 'require_control'}:
+    if not isinstance(validation, dict) or set(validation) - {
+            'max_kl', 'eval_tokens', 'require_control', 'post_quant_min_first_token', 'post_quant_min_full_match'}:
         raise ValueError('Parametri validation sconosciuti.')
     if validation.get('require_control', True) is not True:
         raise ValueError('Il controllo separato resta obbligatorio.')
-    for key in ('max_kl', 'eval_tokens'):
+    for key in ('max_kl', 'eval_tokens', 'post_quant_min_first_token', 'post_quant_min_full_match'):
         if key in validation:
             put(key, validation[key])
     export = raw.pop('export', {'format': 'hf'})
