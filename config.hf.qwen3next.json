@@ -8,6 +8,7 @@
   "flavor": "rtx-pro-6000x2",
   "timeout": "3h",
   "quantization": null,
+  "allow_public_output": true,
   "requirements": "requirements-qwen3next.txt",
   "build": {
     "revision": "9c7f2fbe84465e40164a94cc16cd30b6999b0cc7",

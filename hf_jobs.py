@@ -53,8 +53,9 @@ def submit(cfg):
     metadata = hf_hub_download(cfg['model'], 'config.json', revision=source.sha, token=token)
     plan = check_metadata(cfg, json.loads(Path(metadata).read_text(encoding='utf-8-sig')))
     api.create_repo(repo_id=repo, private=True, exist_ok=True)
-    if api.model_info(repo).private is not True:
-        raise ValueError('La destinazione esiste ed è pubblica. Scegliere un repository privato.')
+    if api.model_info(repo).private is not True and not cfg.get('allow_public_output'):
+        raise ValueError('La destinazione esiste ed è pubblica. Scegliere un repository privato '
+                         'oppure dichiarare allow_public_output: true nel profilo (scelta esplicita).')
     prefix = 'requests/' + uuid4().hex
     with tempfile.TemporaryDirectory(prefix='moediet-job-') as tmp:
         stage = Path(tmp)

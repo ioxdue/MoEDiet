@@ -95,7 +95,8 @@ def load_config(filename, tags=None, repo=None, metadata_only=False):
         raise ValueError('Il profilo JSON richiede mode uguale a local o hf.')
     local = raw['mode'] == 'local'
     common = {'mode', 'model', 'tags', 'quantization', 'build', 'corpus', 'architecture_profile'}
-    extra = {'out', 'llama_dir', 'bin_dir'} if local else {'output_repo', 'flavor', 'timeout', 'requirements'}
+    extra = {'out', 'llama_dir', 'bin_dir'} if local else {
+        'output_repo', 'flavor', 'timeout', 'requirements', 'allow_public_output'}
     if unknown := set(raw) - common - extra:
         raise ValueError(f'Chiavi di configurazione sconosciute: {sorted(unknown)}')
     names = raw.get('tags') if tags is None else tags
@@ -166,6 +167,7 @@ def load_config(filename, tags=None, repo=None, metadata_only=False):
         if cfg['output_repo'].casefold() == cfg['model'].casefold():
             raise ValueError('Sorgente e repository di destinazione devono essere distinti.')
         cfg.update(flavor=raw.get('flavor', 'l4x1'), timeout=raw.get('timeout', '90m'))
+        cfg['allow_public_output'] = bool(raw.get('allow_public_output', False))
         requirements = raw.get('requirements', 'requirements.txt')
         if requirements not in JOB_REQUIREMENTS:
             raise ValueError('requirements deve essere uno tra: ' + ', '.join(JOB_REQUIREMENTS))

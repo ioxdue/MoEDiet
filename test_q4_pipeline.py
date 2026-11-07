@@ -73,6 +73,15 @@ class TestExecutionModes(unittest.TestCase):
                 hf_jobs.submit(cfg)
         api.upload_folder.assert_not_called()
         api.run_job.assert_not_called()
+        # Explicit opt-in allows a public destination (fail-open only by declaration).
+        api.reset_mock()
+        api.model_info.side_effect = [SimpleNamespace(sha='a' * 40), SimpleNamespace(private=False)]
+        cfg_public = {**cfg, 'allow_public_output': True}
+        api.upload_folder.side_effect = store_code
+        with patch('hf_jobs.HfApi', return_value=api), patch('hf_jobs.get_token', return_value='canary-token'), patch(
+                'hf_jobs.hf_hub_download', return_value=str(metadata)):
+            hf_jobs.submit(cfg_public)
+        api.run_job.assert_called_once()
 
     def test_fallback_and_native_failure_preserve_previous_outputs(self):
         out = self.root / 'run'
