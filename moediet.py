@@ -73,14 +73,22 @@ def resolve_source(name, revision, fingerprint, architecture_profile=None, quant
 
 def load_model(source, device, dtype, architecture_profile=None):
     tp = 'auto' if dtype == 'auto' else getattr(torch, dtype)
+    multi_gpu = device == 'cuda' and torch.cuda.device_count() > 1
+    kwargs = {}
+    if multi_gpu:
+        # Modelli piu grandi di una singola GPU (es. Next-80B bf16) vengono
+        # distribuiti su tutte le GPU visibili; non serve model.to(device).
+        kwargs['device_map'] = 'auto'
     model, info = AutoModelForCausalLM.from_pretrained(
         source['id'], revision=source.get('revision'), torch_dtype=tp, use_safetensors=True,
-        attn_implementation='eager', output_loading_info=True, trust_remote_code=False,
+        attn_implementation='eager', output_loading_info=True, trust_remote_code=False, **kwargs,
     )
     if any(info.get(key) for key in ('missing_keys', 'unexpected_keys', 'mismatched_keys', 'error_msgs')):
         raise ValueError(f'Pesi incompatibili con il modello: {info}')
     model.config.moediet_architecture = resolve_profile(model.config, architecture_profile)
-    model.to(device).eval()
+    if not multi_gpu:
+        model.to(device)
+    model.eval()
     blocks(model)
     return model
 

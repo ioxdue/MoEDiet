@@ -74,7 +74,8 @@ def submit(cfg):
                                    commit_message='MoEDiet: codice e parametri del Job')
     job = api.run_job(image=IMAGE, command=['python', '-c', BOOTSTRAP], flavor=cfg['flavor'],
                       timeout=cfg['timeout'], secrets={'HF_TOKEN': token},
-                      env={'MOEDIET_REPO': repo, 'MOEDIET_CODE': prefix, 'MOEDIET_COMMIT': commit.oid})
+                      env={'MOEDIET_REPO': repo, 'MOEDIET_CODE': prefix, 'MOEDIET_COMMIT': commit.oid,
+                           'PYTORCH_CUDA_ALLOC_CONF': 'expandable_segments:True'})
     print(f'Job: {job.url}\nOutput dopo il salvataggio: https://huggingface.co/{repo}/tree/main/runs/{job.id}')
     return job
 

@@ -6,12 +6,13 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import torch
 from tokenizers import Tokenizer, decoders, models, pre_tokenizers
 from transformers import AutoModelForCausalLM, AutoTokenizer, OlmoeConfig, OlmoeForCausalLM, PreTrainedTokenizerFast
 
+import moediet
 from moediet import budgets_for, main, resolve_source, verify_manifest
 from probes import CONTROL, make_probes
 from routing import compact_in_place, continuation, encode, masked, profile, select_experts, validate_rows
@@ -167,6 +168,41 @@ class TestMoEDiet(unittest.TestCase):
         path.write_text(json.dumps(corpus))
         with self.assertRaisesRegex(ValueError, 'duplicata'):
             make_probes(['python'], path)
+
+
+class TestLoadModelSharding(unittest.TestCase):
+    """Multi-GPU sharding: device_map='auto' and no model.to(device) when several GPUs are visible."""
+
+    def _load(self, gpu_count):
+        calls = {}
+        fake_model = MagicMock()
+
+        def fake_from_pretrained(*args, **kwargs):
+            calls.update(kwargs)
+            return fake_model, {}
+
+        patches = [
+            patch('moediet.torch.cuda.device_count', return_value=gpu_count),
+            patch('moediet.AutoModelForCausalLM.from_pretrained', side_effect=fake_from_pretrained),
+            patch('moediet.resolve_profile', return_value='spec'),
+            patch('moediet.blocks'),
+        ]
+        with contextlib.ExitStack() as stack:
+            for p in patches:
+                stack.enter_context(p)
+            moediet.load_model({'id': 'org/model', 'revision': 'abc123'}, 'cuda', 'auto')
+        return calls, fake_model
+
+    def test_multi_gpu_uses_device_map_auto(self):
+        calls, fake_model = self._load(2)
+        self.assertEqual(calls.get('device_map'), 'auto')
+        fake_model.to.assert_not_called()
+        fake_model.eval.assert_called_once()
+
+    def test_single_gpu_keeps_explicit_move(self):
+        calls, fake_model = self._load(1)
+        self.assertNotIn('device_map', calls)
+        fake_model.to.assert_called_once_with('cuda')
 
 
 if __name__ == '__main__':
