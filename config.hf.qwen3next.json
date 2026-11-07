@@ -5,8 +5,8 @@
   "tags": ["agents", "tools", "evals"],
   "corpus": "corpora/agents-v1.json",
   "output_repo": null,
-  "flavor": "h200x2",
-  "timeout": "12h",
+  "flavor": "rtx-pro-6000x2",
+  "timeout": "3h",
   "quantization": null,
   "requirements": "requirements-qwen3next.txt",
   "build": {
