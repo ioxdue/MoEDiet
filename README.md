@@ -171,7 +171,7 @@ di salvataggio. Nessun nuovo Job HF o test del Qwen3.8 completo e stato eseguito
 | Profilo | `config.local.json` | `config.hf.json` |
 | Originale | ID Hub scaricato nella cache sul PC oppure una cartella locale contenente `config.json`, tokenizer, pesi e indice degli shard | ID Hub. I pesi arrivano nella macchina del Job. Il PC invia i sorgenti del controller, i parametri e l’eventuale corpus specificato. |
 | Calcolo | PyTorch CPU o CUDA. Sullo Snapdragon il controller usa la CPU Oryon. | Default GPU L4, BF16 e timeout di 90 minuti. La quantizzazione e la prova llama.cpp usano la CPU del Job. |
-| Risultati | Sotto la nuova directory `out`, per default `runs/dev-q4` accanto al profilo | Nel repository privato scelto, sotto `runs/<JOB_ID>/`. Il launcher stampa i link al Job e ai risultati. |
+| Risultati | Sotto la nuova directory `out`, per default `runs/dev-q4` accanto al profilo | Nel repository di destinazione scelto, sotto `runs/<JOB_ID>/`. Il launcher stampa i link al Job e ai risultati. |
 
 ### Locale su Windows
 
@@ -228,7 +228,7 @@ del profilo iniziale, senza allentare la soglia di fedeltà:
 | Continuazione di riferimento | Fino a 32 token per sonda; EOS può terminarla prima |
 | Corpus | `corpora/agents-v1.json` |
 | Esecuzione | Una L4, BF16, timeout 90 minuti, export Q4_K_M |
-| Destinazione | Repo privato scelto dall'operatore, passato con `--repo nome/repo` |
+| Destinazione | Repository di destinazione scelto dall'operatore (`--repo nome/repo`); la visibilità è una scelta dell'operatore |
 
 Il modello e il commit AllenAI sono fissati alla stessa revisione verificata
 `b89a7c4bc24fb9e55ce2543c9458ce0ca5c4650e`.
@@ -271,7 +271,7 @@ python -m venv .venv-launcher
 ```
 
 Le credenziali sono quelle già salvate da `hf auth login`.
-Per un altro account aggiungi `--repo nome/repo-privato`.
+Per un altro account aggiungi `--repo nome/repo`.
 Il corpus viene copiato automaticamente nella richiesta inviata al Job; non occorre
 caricarlo a mano. Mantieni insieme profilo e sottocartella `corpora`.
 Non cambiare `--tags` senza fornire un corpus con gli stessi gruppi.
