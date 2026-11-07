@@ -41,5 +41,8 @@ sha256 `6b7b3f9d…4350`) + `conversion.json` (`post_quantization_task_quality_m
 ## Honesty caveats
 
 - Budget 8 = native top-k of OLMoE; the smallest meaningful prune.
-- GGUF produced and validated structurally + 2-token smoke, **no task-quality
-  measurement after quantization** (same flag as the HF export path).
+- The GGUF passed structural validation and a 2-token smoke only. **There is no
+  task-quality measurement after quantization, and that is a hard quality gap, not a
+  footnote:** a structurally valid Q4_K_M file can still degrade badly on real probes,
+  so this artifact must be treated as a pipeline smoke, not as a quality-accepted build.
+  The same gap exists on the HF export path (`post_quantization_task_quality_measured: false`);
