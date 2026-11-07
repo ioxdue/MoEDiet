@@ -1,48 +1,45 @@
-# Local smoke — GGUF leg (OLMoE, budget 8)
+# 本地冒烟 —— GGUF 环节（OLMoE，budget 8）
 
-Date: 2026-11-07. Completes the staged local smoke: pruning → checkpoint → GGUF.
+日期：2026-11-07。完成分阶段本地冒烟：剪枝 → checkpoint → GGUF。
 
-## What ran
+## 运行内容
 
-1. **Prune + save/reload** — `local_smoke_olmoe.py --stage roundtrip --budget 8 --out runs/local-smoke-b8`
-   (`.venv-test4554`): roundtrip max abs diff 0.0, reloaded experts 8, 7.3 s.
-2. **Run assembly** — `runs/gguf-smoke-b8/checkpoint/` (the saved model) + synthesized
-   `report.json` (`status: pruned`, `retained_per_layer: 8`, routing 16 layers / 64 native
-   experts / top-8). **Scope note:** the audit fields cover probe equivalence only
-   (`masked vs compact` logits 0.0 on a 16-token prompt); corpus KL was not run
-   (`audit_scope: probe_equivalence_only; corpus_kl_not_run`).
-3. **Convert** — `convert_hf_to_gguf.py` (user llama.cpp checkout, b11185/d81aef199)
-   → F16 GGUF, 2.56 GiB, 195 tensors, 26 s (`.venv-gguf`, PYTHONPATH to repo `gguf-py`).
-4. **Quantize** — `llama-quantize … Q4_K_M`: 2 442 → 818 MiB (16.00 → 5.36 BPW), 3 s.
-5. **Validate** — `gguf_export.check_gguf`: metadata exact (olmoe, 16 blocks, 8 experts,
-   8 used); expert tensors all present, 3-D, last dim = 8; quantized counts
-   `Q4_K: 40, Q6_K: 8` (down-proj Q6_K is normal for Q4_K_M). `llama-cli` smoke
-   (2 prompt tokens, 2 decode steps, temp 0, `-ngl 0`) **passed**.
+1. **剪枝 + save/reload** —— `local_smoke_olmoe.py --stage roundtrip --budget 8 --out runs/local-smoke-b8`
+   （`.venv-test4554`）：roundtrip 最大绝对差异 0.0，重载后专家数 8，耗时 7.3 s。
+2. **Run 组装** —— `runs/gguf-smoke-b8/checkpoint/`（保存的模型）+ 合成
+   `report.json`（`status: pruned`、`retained_per_layer: 8`、routing 16 层 / 原生 64 专家 / top-8）。
+   **范围说明：** audit 字段仅覆盖探针等价性（16 token 提示下 `masked vs compact`
+   对数差异 0.0）；未跑语料 KL（`audit_scope: probe_equivalence_only; corpus_kl_not_run`）。
+3. **转换** —— `convert_hf_to_gguf.py`（用户 llama.cpp checkout，b11185/d81aef199）
+   → F16 GGUF，2.56 GiB，195 个张量，26 s（`.venv-gguf`，PYTHONPATH 指向仓库 `gguf-py`）。
+4. **量化** —— `llama-quantize … Q4_K_M`：2 442 → 818 MiB（16.00 → 5.36 BPW），3 s。
+5. **校验** —— `gguf_export.check_gguf`：元数据精确匹配（olmoe，16 块，8 专家，
+   8 使用）；专家张量齐全，3 维，末维 = 8；量化计数
+   `Q4_K: 40, Q6_K: 8`（down-proj 用 Q6_K 是 Q4_K_M 的正常形态）。`llama-cli` 冒烟
+   （2 prompt token，2 decode 步，temp 0，`-ngl 0`）**通过**。
 
-Artifact: `runs/gguf-smoke-b8/gguf/Q4_K_M/model-Q4_K_M.gguf` (859 903 936 bytes,
-sha256 `6b7b3f9d…4350`) + `conversion.json` (`post_quantization_task_quality_measured: false`).
+产物：`runs/gguf-smoke-b8/gguf/Q4_K_M/model-Q4_K_M.gguf`（859 903 936 字节，
+sha256 `6b7b3f9d…4350`）+ `conversion.json`（`post_quantization_task_quality_measured: false`）。
 
-## Toolchain notes (this machine)
+## 工具链备注（本机）
 
-- No cmake / Visual Studio on PATH → the pinned b6500 auto-build in `llama_tools.get_tools()`
-  cannot run here. Used the user's existing llama.cpp checkout
-  (`$MOEDIET_LLAMA_DIR`, b11185) via the supported
-  `llama_dir` / `bin_dir` override; revision recorded as `user-b11185-d81aef199`.
-- Its `bin/` is the **Hexagon NPU build**: llama-cli fails with
-  `ggml-hex: HTP0 failed to open session (0x80000406)` unless the FastRPC env from
-  `the local Hexagon launcher script (launch-hexagon.ps1)` is set (`ADSP_LIBRARY_PATH=<bin dir>`,
-  `GGML_HEXAGON_OPBATCH=512`, `GGML_HEXAGON_VTCM_SIZE=8M`). The CPU-only build
-  `$MOEDIET_LLAMA_BIN` (same commit) plus that env was
-  used for the smoke; both quirks are handled in `local_smoke_gguf_finish.py`.
-- The monolithic `gguf_export.export_run` exceeds the 280 s execution cap on this box
-  for large models; the leg was mirrored step-by-step (convert → quantize →
-  check+smoke) by `local_smoke_gguf_finish.py`.
+- PATH 上没有 cmake / Visual Studio → `llama_tools.get_tools()` 钉死的 b6500
+  自动构建在本机无法运行。改用用户现有的 llama.cpp checkout
+  （`$MOEDIET_LLAMA_DIR`，b11185），通过其支持的
+  `llama_dir` / `bin_dir` 覆盖传入；revision 记为 `user-b11185-d81aef199`。
+- 该仓库 `bin/` 是 **Hexagon NPU 构建**：不设置 `the local Hexagon launcher script (launch-hexagon.ps1)`
+  中的 FastRPC 环境（`ADSP_LIBRARY_PATH=<bin 目录>`、`GGML_HEXAGON_OPBATCH=512`、
+  `GGML_HEXAGON_VTCM_SIZE=8M`），llama-cli 会报
+  `ggml-hex: HTP0 failed to open session (0x80000406)`。冒烟实际使用的是 CPU 版构建
+  `$MOEDIET_LLAMA_BIN`（同一 commit）+ 上述环境；
+  这两个问题都由 `local_smoke_gguf_finish.py` 处理。
+- 单体式的 `gguf_export.export_run` 在本机对大模型会超出 280 s 执行上限；
+  本环节由 `local_smoke_gguf_finish.py` 逐步镜像（convert → quantize → check + smoke）。
 
-## Honesty caveats
+## 诚实声明
 
-- Budget 8 = native top-k of OLMoE; the smallest meaningful prune.
-- The GGUF passed structural validation and a 2-token smoke only. **There is no
-  task-quality measurement after quantization, and that is a hard quality gap, not a
-  footnote:** a structurally valid Q4_K_M file can still degrade badly on real probes,
-  so this artifact must be treated as a pipeline smoke, not as a quality-accepted build.
-  The same gap exists on the HF export path (`post_quantization_task_quality_measured: false`);
+- Budget 8 = OLMoE 原生 top-k，是最小的有意义的剪枝。
+- 该 GGUF 仅通过结构校验和 2 token 冒烟。**量化后没有任务质量测量，这是一个硬性
+  质量缺口，不是脚注：** 结构合法的 Q4_K_M 文件在真实探针上仍可能严重退化，
+  因此该产物只能视为管线冒烟，不能视为质量验收的构建。HF 导出路径存在同样的
+  缺口（`post_quantization_task_quality_measured: false`）。
