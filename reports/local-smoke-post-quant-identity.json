@@ -1,0 +1,70 @@
+{
+  "positive": {
+    "groups": {
+      "agents": {
+        "prompts": 1,
+        "first_token_agreement": 1.0,
+        "full_continuation_match": 1.0,
+        "mean_prefix_fraction": 1.0
+      },
+      "tools": {
+        "prompts": 1,
+        "first_token_agreement": 1.0,
+        "full_continuation_match": 1.0,
+        "mean_prefix_fraction": 1.0
+      },
+      "evals": {
+        "prompts": 1,
+        "first_token_agreement": 1.0,
+        "full_continuation_match": 0.0,
+        "mean_prefix_fraction": 0.125
+      },
+      "__control__": {
+        "prompts": 1,
+        "first_token_agreement": 1.0,
+        "full_continuation_match": 0.0,
+        "mean_prefix_fraction": 0.625
+      }
+    },
+    "overall": {
+      "prompts": 4,
+      "first_token_agreement": 1.0,
+      "full_continuation_match": 0.5,
+      "mean_prefix_fraction": 0.6875
+    }
+  },
+  "negative": {
+    "groups": {
+      "agents": {
+        "prompts": 1,
+        "first_token_agreement": 0.0,
+        "full_continuation_match": 0.0,
+        "mean_prefix_fraction": 0.0
+      },
+      "tools": {
+        "prompts": 1,
+        "first_token_agreement": 0.0,
+        "full_continuation_match": 0.0,
+        "mean_prefix_fraction": 0.0
+      },
+      "evals": {
+        "prompts": 1,
+        "first_token_agreement": 0.0,
+        "full_continuation_match": 0.0,
+        "mean_prefix_fraction": 0.0
+      },
+      "__control__": {
+        "prompts": 1,
+        "first_token_agreement": 0.0,
+        "full_continuation_match": 0.0,
+        "mean_prefix_fraction": 0.0
+      }
+    },
+    "overall": {
+      "prompts": 4,
+      "first_token_agreement": 0.0,
+      "full_continuation_match": 0.0,
+      "mean_prefix_fraction": 0.0
+    }
+  }
+}

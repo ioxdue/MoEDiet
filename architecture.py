@@ -148,10 +148,15 @@ def budgets_for(total, top_k, requested=None, fractions=None):
     return sorted(set(requested) | {total})
 
 
+# Profiles whose native GGUF export path is verified end-to-end (fixture tests):
+# 'olmoe' (AllenAI OLMoE 0125) and 'qwen3_next' (Qwen3-Next, llama.cpp Qwen3NextModel).
+EXPORT_PROFILES = ('olmoe', 'qwen3_next')
+
+
 def check_export(spec, quantization):
     if quantization:
-        # Only the exact built-in OLMoE layout has a verified native GGUF exporter.
-        if spec != load_profile('olmoe'):
+        # Only the exact built-in layouts have a verified native GGUF exporter.
+        if all(spec != load_profile(name) for name in EXPORT_PROFILES):
             raise ValueError('Export GGUF non supportato per questo profilo. Usare export.format=hf o quantization=null.')
 
 

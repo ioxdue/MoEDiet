@@ -1,0 +1,24 @@
+{
+  "file": "model-Q4_K_M.gguf",
+  "quantization": "Q4_K_M",
+  "bytes": 64668256,
+  "sha256": "645333027f787be95844a0e08003a2a90b3b4b14a6a5dc3411bb3213f0dbd6fe",
+  "llama_cpp_revision": "user-supplied",
+  "architecture": "qwen3_next",
+  "layers": 4,
+  "experts_per_layer": 4,
+  "experts_per_token": 2,
+  "expert_tensor_types": {
+    "Q4_K": 10,
+    "Q6_K": 2
+  },
+  "smoke": {
+    "backend": "llama.cpp/CPU",
+    "requested_tokens": 2,
+    "passed": true,
+    "prompt_tokens_evaluated": 2,
+    "decode_steps": 2
+  },
+  "post_quantization_task_quality_measured": false,
+  "post_quantization_task_quality": null
+}

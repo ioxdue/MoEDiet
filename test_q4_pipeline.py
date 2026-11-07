@@ -88,7 +88,7 @@ class TestExecutionModes(unittest.TestCase):
         self.assertFalse((out / 'gguf').exists())
         r.write_text(json.dumps({'status': 'pruned', 'checkpoint': {'parameters': 10}, 'retained_per_layer': 2,
                                  'checkpoint_audit': {'passed': True}, 'routing': {'num_layers': 1,
-                                 'experts_per_layer': 4, 'experts_per_token': 2}}))
+                                 'experts_per_layer': 4, 'experts_per_token': 2, 'layer_indices': [0]}}))
         (out / 'checkpoint').mkdir()
         (out / 'checkpoint/config.json').write_text(json.dumps({'model_type': 'olmoe', 'num_experts': 2,
                 'num_experts_per_tok': 2, 'num_hidden_layers': 1, 'num_attention_heads': 4}))

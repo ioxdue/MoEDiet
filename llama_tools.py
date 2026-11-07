@@ -11,8 +11,8 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
-COMMIT = 'a7a98e0fffed794396b3fbad4dcdbbc184963645'  # llama.cpp b6500
-ARCHIVE_SHA256 = '4d78e6aa4a9124b58dff994416525294fbab2990fe905a640d4cbd26bf563a31'
+COMMIT = 'd81aef19941e145d04f88fb180ea89a67d052ab5'  # llama.cpp b11185 (Qwen3-Next converter support)
+ARCHIVE_SHA256 = '837bc921584df017fc512f45980a52692d6fa56f0541d0e5ee898148cb4dd076'
 TARGETS = ('llama-quantize', 'llama-cli', 'llama-server')
 
 

@@ -11,49 +11,61 @@ import sys
 import tempfile
 
 from llama_tools import get_tools, sha256
-from architecture import check_export, resolve_profile
+from architecture import check_export, layer_indices, resolve_profile, topology
 
 QTYPES = ('Q4_K_M', 'Q4_0')
+
+# GGUF architecture names for the export-verified profiles (see test_qwen3next_export).
+GGUF_ARCH = {'olmoe': 'olmoe', 'qwen3_next': 'qwen3next'}
 
 
 def model_config(run, report):
     cfg = json.loads((run / 'checkpoint' / 'config.json').read_text(encoding='utf-8'))
-    check_export(resolve_profile(cfg), True)
+    spec = resolve_profile(cfg)
+    check_export(spec, True)
+    if spec['model_type'] not in GGUF_ARCH:
+        raise ValueError(f"Profilo {spec['model_type']} senza exporter GGUF verificato.")
     native = report['routing']
     if (not report.get('checkpoint') or not report.get('checkpoint_audit', {}).get('passed')
-            or cfg.get('model_type') != 'olmoe' or cfg['num_experts'] != report['retained_per_layer']
-            or cfg['num_experts_per_tok'] != native['experts_per_token']
-            or cfg['num_hidden_layers'] != native['num_layers']
-            or not cfg['num_experts_per_tok'] <= cfg['num_experts'] < native['experts_per_layer']):
+            or cfg.get('model_type') != spec['model_type']
+            or cfg[spec['layout']['count']] != report['retained_per_layer']
+            or cfg[spec['config']['top_k']] != native['experts_per_token']
+            or layer_indices(cfg, spec) != native['layer_indices']
+            or not native['experts_per_token'] <= report['retained_per_layer'] < native['experts_per_layer']):
         raise ValueError('Il checkpoint non corrisponde al taglio accettato nel report.')
     # The pinned native OLMoE graph has these semantics. Refuse variants it would silently change.
-    if (cfg.get('norm_topk_prob', False) or cfg.get('clip_qkv') is not None or cfg.get('attention_bias', False)
+    if spec['model_type'] == 'olmoe' and (
+            cfg.get('norm_topk_prob', False) or cfg.get('clip_qkv') is not None or cfg.get('attention_bias', False)
             or cfg.get('rope_scaling') or cfg.get('hidden_act', 'silu') != 'silu'
             or cfg.get('rms_norm_eps', 1e-5) != 1e-5
             or cfg.get('num_key_value_heads', cfg['num_attention_heads']) != cfg['num_attention_heads']):
         raise ValueError('Configurazione OLMoE fuori dal profilo GGUF verificato (AllenAI 0125).')
-    return cfg
+    return cfg, spec
 
 
-def check_gguf(file, source, cfg, qtype):
+def check_gguf(file, source, cfg, spec, qtype):
     sys.path.insert(0, str(source / 'gguf-py'))
     try:
         from gguf import GGUFReader, LlamaFileType
     finally:
         sys.path.pop(0)
+    arch = GGUF_ARCH[spec['model_type']]
     reader = GGUFReader(str(file))
-    expected = {'general.architecture': 'olmoe', 'general.file_type': int(getattr(LlamaFileType, 'MOSTLY_' + qtype)),
-                'olmoe.block_count': cfg['num_hidden_layers'], 'olmoe.expert_count': cfg['num_experts'],
-                'olmoe.expert_used_count': cfg['num_experts_per_tok']}
+    expected = {'general.architecture': arch, 'general.file_type': int(getattr(LlamaFileType, 'MOSTLY_' + qtype)),
+                f'{arch}.block_count': cfg[spec['config']['layers']],
+                f'{arch}.expert_count': cfg[spec['layout']['count']],
+                f'{arch}.expert_used_count': cfg[spec['config']['top_k']]}
     for key, value in expected.items():
         if key not in reader.fields or reader.fields[key].contents() != value:
             raise ValueError(f'Metadato GGUF errato o mancante: {key}')
-    names = {f'blk.{i}.ffn_{axis}_exps.weight' for i in range(cfg['num_hidden_layers'])
+    names = {f'blk.{i}.ffn_{axis}_exps.weight' for i in topology(cfg, spec)['layer_indices']
              for axis in ('gate', 'up', 'down')}
     experts = {tensor.name: tensor for tensor in reader.tensors if '_exps.weight' in tensor.name}
-    if set(experts) != names or any(len(t.shape) != 3 or t.shape[2] != cfg['num_experts'] for t in experts.values()):
+    if set(experts) != names or any(len(t.shape) != 3 or t.shape[2] != cfg[spec['layout']['count']]
+                                    for t in experts.values()):
         raise ValueError('Tensori degli esperti mancanti o dimensione errata nel GGUF.')
     counts = Counter(t.tensor_type.name for t in experts.values())
+    del reader  # Release the file handle before any raise (Windows locks the GGUF).
     if counts['Q4_K' if qtype == 'Q4_K_M' else 'Q4_0'] == 0:
         raise ValueError(f'Nessuna matrice degli esperti quantizzata realmente in {qtype}.')
     return dict(counts)
@@ -74,7 +86,7 @@ def export_run(run, qtype='Q4_K_M', llama_dir=None, bin_dir=None):
             raise ValueError(f"Stato della build sconosciuto: {report['status']}")
         print(f"GGUF saltato: {report['status']}. Nessun checkpoint fisico accettato.", flush=True)
         return None
-    cfg = model_config(run, report)
+    cfg, spec = model_config(run, report)
     dest = run / 'gguf' / qtype
     if dest.exists():
         raise ValueError(f'Esiste già un export {qtype}: {dest}')
@@ -88,10 +100,13 @@ def export_run(run, qtype='Q4_K_M', llama_dir=None, bin_dir=None):
         env = os.environ.copy()
         env.pop('NO_LOCAL_GGUF', None)
         print(f'Conversione del checkpoint in F16, poi {qtype}...', flush=True)
-        subprocess.run([sys.executable, str(tools.source / 'convert_hf_to_gguf.py'), str(run / 'checkpoint'),
-                        '--outtype', 'f16', '--outfile', str(fp16)], env=env, check=True)
+        convert_cmd = [sys.executable, str(tools.source / 'convert_hf_to_gguf.py'), str(run / 'checkpoint'),
+                       '--outtype', 'f16', '--outfile', str(fp16)]
+        if spec['model_type'] == 'qwen3_next':
+            convert_cmd.append('--no-mtp')  # D4: MTP draft stays out of v1 artifacts.
+        subprocess.run(convert_cmd, env=env, check=True)
         subprocess.run([str(tools.quantize), str(fp16), str(result), qtype], check=True)
-        counts = check_gguf(result, tools.source, cfg, qtype)
+        counts = check_gguf(result, tools.source, cfg, spec, qtype)
         smoke_cmd = [str(tools.cli), '-m', str(result), '-ngl', '0',
                      '--no-warmup', '--no-display-prompt', '--check-tensors', '--ignore-eos', '-c', '64',
                      '-t', '2', '-n', '2', '--temp', '0', '-p', 'print(1)']
@@ -125,8 +140,10 @@ def export_run(run, qtype='Q4_K_M', llama_dir=None, bin_dir=None):
                                  + json.dumps(metrics['overall'], ensure_ascii=False))
         record = {'file': result.name, 'quantization': qtype, 'bytes': result.stat().st_size,
                   'sha256': sha256(result), 'llama_cpp_revision': tools.revision,
-                  'layers': cfg['num_hidden_layers'], 'experts_per_layer': cfg['num_experts'],
-                  'experts_per_token': cfg['num_experts_per_tok'], 'expert_tensor_types': counts,
+                  'architecture': spec['model_type'],
+                  'layers': len(topology(cfg, spec)['layer_indices']),
+                  'experts_per_layer': cfg[spec['layout']['count']],
+                  'experts_per_token': cfg[spec['config']['top_k']], 'expert_tensor_types': counts,
                   'smoke': {'backend': 'llama.cpp/CPU', 'requested_tokens': 2, 'passed': True,
                             'prompt_tokens_evaluated': int(prefill[1]), 'decode_steps': int(decode[1])},
                   'post_quantization_task_quality_measured': quality is not None,
