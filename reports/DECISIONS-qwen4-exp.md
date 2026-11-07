@@ -119,3 +119,26 @@ la richiesta è rivolta a un adapter `qwen3_next` su checkpoint reale con audit 
 - **D14 — Sequenza smoke:** primo Job a pagamento = controllo identità B=512 su h200x2
   (budget atteso 25–40 $); i budget reali (256/128/…) solo dopo esito pulito, un Job per gruppo
   di budget con audit separato su tag e gruppo di controllo.
+- **D15 — Gate post-quantizzazione obbligatorio:** l'export GGUF non si considera accettato
+  senza misura di qualità dopo la quantizzazione. Metodo: *greedy continuation match* — il
+  build serializza in `report.json` le continuazioni greedy del checkpoint potato
+  (`post_quant_reference`, trace di audit dal modello compatto, non dall'originale: il gate
+  deve isolare il danno della quantizzazione); `gguf_export.export_run` le rigioca sul GGUF
+  via llama-server (`/v1/completions` con prompt come id-token, immune al parsing dei token
+  speciali) e fallisce chiuso sotto soglia. Soglie di default: first-token ≥ 0,95,
+  full-continuation ≥ 0,40 (calibrate in locale: identità Q4_K_M = 1,0 / ~0,5 su 8 token).
+  Collaudo: artefatto OLMoE b8 **respinto correttamente** (accordo 0,25 — potatura degenere),
+  controllo identità passato, controllo negativo respinto. Costo marginale sul Job: minuti CPU.
+- **D16 — Export qwen3_next e pin llama.cpp:** ramo d'export generalizzato sui profili
+  (`model_config`/`check_gguf` risolvono il profilo; layer MoE via `layer_indices`; metadati
+  `qwen3next.*`). Il convert passa `--no-mtp` (D4 si estende a qwen3_next). Pin bumpato
+  b6500 → b11185 (`d81aef199…`): il converter b6500 non conosce Qwen3NextModel; SHA-256
+  dell'archivio verificato. Verifica end-to-end su fixture tiny (tokenizer reale Coder-Next:
+  un vocabolario sintetico non può passare il riconoscimento chkhsh; `mlp_only_layers=[]`
+  come i config reali — llama.cpp qwen3next non ha tensori FFN dense): convert+quantize+
+  check+smoke verdi (`reports/qwen3next-export-fixture.json`).
+- **D17 — Job di potatura qwen3_next:** dopo l'identità B=512 (D14), il Job che produce
+  l'artefatto locale è `config.hf.qwen3next.prune.json`: budget [64, 128] (selezione con
+  fallback sul gate KL, audit separato su tag + controllo), export Q4_K_M con gate D15
+  attivo. Stima dimensione artefatto a 64/512 esperti: ~5 GB in Q4_K_M — adeguata alla
+  workstation a 48 GB.
