@@ -31,8 +31,10 @@ from transformers.models.qwen3_next import Qwen3NextConfig, Qwen3NextForCausalLM
 
 from adapters import adapter_for
 
-LLAMA_DIR = Path(r"$MOEDIET_LLAMA_DIR")
-BIN_DIR = Path(r"$MOEDIET_LLAMA_BIN")
+# llama.cpp checkout and executables of the SAME build, supplied via environment
+# (never hardcode local machine paths in the repository).
+LLAMA_DIR = Path(os.environ["MOEDIET_LLAMA_DIR"])
+BIN_DIR = Path(os.environ["MOEDIET_LLAMA_BIN"])
 RUN = Path(__file__).resolve().parent / "runs" / "qwen3next-export-fixture"
 KEEP = [0, 2, 5, 7]
 TOK_REPO = "Qwen/Qwen3-Coder-Next"

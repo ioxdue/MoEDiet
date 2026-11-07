@@ -228,7 +228,7 @@ del profilo iniziale, senza allentare la soglia di fedeltà:
 | Continuazione di riferimento | Fino a 32 token per sonda; EOS può terminarla prima |
 | Corpus | `corpora/agents-v1.json` |
 | Esecuzione | Una L4, BF16, timeout 90 minuti, export Q4_K_M |
-| Destinazione predefinita | `operator/moediet-runs`, obbligatoriamente privata |
+| Destinazione | Repo privato scelto dall'operatore, passato con `--repo nome/repo` |
 
 Il modello e il commit AllenAI sono fissati alla stessa revisione verificata
 `b89a7c4bc24fb9e55ce2543c9458ce0ca5c4650e`.

@@ -8,7 +8,7 @@
   "architecture_profile": "architectures/olmoe.json",
   "tags": ["agents", "tools", "evals"],
   "corpus": "corpora/agents-v1.json",
-  "output_repo": "operator/moediet-runs",
+  "output_repo": null,
   "flavor": "l4x1",
   "timeout": "90m",
   "pruning": {

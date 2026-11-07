@@ -17,13 +17,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gguf_export import check_gguf, model_config
 from llama_tools import installed, sha256
 
+def env_path(name):
+    value = os.environ.get(name)
+    if not value:
+        raise SystemExit(f"Impostare la variabile d'ambiente {name}.")
+    return Path(value)
+
+
 RUN = Path(__file__).resolve().parent / "runs" / "gguf-smoke-b8"
 WORK = RUN / "gguf-work"
 QTYPE = "Q4_K_M"
-LLAMA_DIR = Path(r"$MOEDIET_LLAMA_DIR")
-# The workspace llama.cpp bin/ is the Hexagon NPU build (ggml-hexagon HTP session
-# fails on this box); use the CPU-only build from ~/llama-cpp for the smoke.
-BIN_DIR = Path(r"$MOEDIET_LLAMA_BIN")
+# llama.cpp checkout and executables of the SAME build, supplied via environment
+# (never hardcode local machine paths in the repository).
+LLAMA_DIR = env_path("MOEDIET_LLAMA_DIR")
+BIN_DIR = env_path("MOEDIET_LLAMA_BIN")
 
 report = json.loads((RUN / "report.json").read_text(encoding="utf-8"))
 cfg = model_config(RUN, report)

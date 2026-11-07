@@ -17,7 +17,7 @@ Per questo percorso non occorre convertire tutto in BF16/F16, riaddestrare,
 requantizzare, aggiornare Transformers o costruire un adattatore universale.
 La richiesta di un formato in un JSON non ne dimostra la compatibilità.
 
-Base esaminata: [MoEDiet ea7a9d7](https://github.com/operator/MoEDiet/tree/ea7a9d7b3063fa733791218d6e6564bded8767ec).
+Base esaminata: MoEDiet @ `ea7a9d7b3063fa733791218d6e6564bded8767ec` (revisione del repository).
 
 ## Stato del repository
 

@@ -6,7 +6,7 @@
     "tools",
     "evals"
   ],
-  "output_repo": "operator/moediet-runs",
+  "output_repo": null,
   "flavor": "l4x1",
   "timeout": "90m",
   "quantization": "Q4_K_M",

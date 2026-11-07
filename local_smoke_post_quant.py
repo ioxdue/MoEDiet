@@ -33,8 +33,9 @@ MODEL = "allenai/OLMoE-1B-7B-0125-Instruct"
 RUN = Path(__file__).resolve().parent / "runs" / "gguf-smoke-b8"
 GGUF_PRUNED = RUN / "gguf" / "Q4_K_M" / "model-Q4_K_M.gguf"
 GGUF_FULL = Path(__file__).resolve().parent / "runs" / "gguf-smoke-full" / "model-Q4_K_M.gguf"
-SERVER = Path(r"$MOEDIET_LLAMA_BIN\llama-server.exe")
-BIN_DIR = SERVER.parent
+# llama-server location comes from the environment (never hardcode machine paths).
+BIN_DIR = Path(os.environ["MOEDIET_LLAMA_BIN"])
+SERVER = BIN_DIR / "llama-server.exe"
 PRUNED_CKPT = Path(__file__).resolve().parent / "runs" / "local-smoke-b8"
 TAGS = ["agents", "tools", "evals"]
 

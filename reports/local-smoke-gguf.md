@@ -22,18 +22,19 @@ Date: 2026-11-07. Completes the staged local smoke: pruning → checkpoint → G
 Artifact: `runs/gguf-smoke-b8/gguf/Q4_K_M/model-Q4_K_M.gguf` (859 903 936 bytes,
 sha256 `6b7b3f9d…4350`) + `conversion.json` (`post_quantization_task_quality_measured: false`).
 
-## Toolchain notes (this machine)
+## Toolchain notes (local machine — paths supplied via environment variables)
 
 - No cmake / Visual Studio on PATH → the pinned b6500 auto-build in `llama_tools.get_tools()`
-  cannot run here. Used the user's existing llama.cpp checkout
-  (`$MOEDIET_LLAMA_DIR`, b11185) via the supported
+  cannot run here. Used a pre-existing local llama.cpp checkout (b11185) via the supported
   `llama_dir` / `bin_dir` override; revision recorded as `user-b11185-d81aef199`.
-- Its `bin/` is the **Hexagon NPU build**: llama-cli fails with
+  Both locations are read from the environment: `MOEDIET_LLAMA_DIR` (checkout) and
+  `MOEDIET_LLAMA_BIN` (executables of the same build) — never hardcoded in the repo.
+- The checkout's own `bin/` is a **Hexagon NPU build**: llama-cli fails with
   `ggml-hex: HTP0 failed to open session (0x80000406)` unless the FastRPC env from
-  `the local Hexagon launcher script (launch-hexagon.ps1)` is set (`ADSP_LIBRARY_PATH=<bin dir>`,
-  `GGML_HEXAGON_OPBATCH=512`, `GGML_HEXAGON_VTCM_SIZE=8M`). The CPU-only build
-  `$MOEDIET_LLAMA_BIN` (same commit) plus that env was
-  used for the smoke; both quirks are handled in `local_smoke_gguf_finish.py`.
+  a Hexagon launcher script is set (`ADSP_LIBRARY_PATH=<bin dir>`,
+  `GGML_HEXAGON_OPBATCH=512`, `GGML_HEXAGON_VTCM_SIZE=8M`). A CPU-only build
+  of the same commit plus that env was used for the smoke; both quirks are handled in
+  `local_smoke_gguf_finish.py`.
 - The monolithic `gguf_export.export_run` exceeds the 280 s execution cap on this box
   for large models; the leg was mirrored step-by-step (convert → quantize →
   check+smoke) by `local_smoke_gguf_finish.py`.
