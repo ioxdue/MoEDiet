@@ -1,0 +1,17 @@
+{
+  "stage": "roundtrip",
+  "budget": 32,
+  "model": "allenai/OLMoE-1B-7B-0125-Instruct",
+  "torch": "2.15.0+cpu",
+  "cuda": false,
+  "load_seconds": 1.4,
+  "dtype": "torch.bfloat16",
+  "ram_estimate_gib": 12.89,
+  "layers": 16,
+  "experts_per_layer": 64,
+  "save_seconds": 3.5,
+  "reload_seconds": 0.8,
+  "roundtrip_max_abs_diff": 0.0,
+  "reloaded_experts": 32,
+  "total_seconds": 11.3
+}
